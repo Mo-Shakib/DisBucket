@@ -119,6 +119,11 @@ if not TOKEN:
     raise SystemExit(
         "❌ DISCORD_BOT_TOKEN not set. Add it to .env or your environment.")
 
+USER_KEY = os.getenv("USER_KEY")
+if not USER_KEY:
+    print("⚠️ WARNING: USER_KEY not set in .env - files will NOT be encrypted!")
+    print("⚠️ Add USER_KEY=your_secure_password to .env file")
+
 # This check prevents the bot from crashing if the drive isn't plugged in.
 # Skip the drive check if custom upload/download paths are provided.
 using_default_drive_paths = not (
@@ -262,7 +267,7 @@ def build_database_entry_text(archive_id, timestamp, file_count, total_size_byte
         f"🆔 **Archive ID:** `{archive_id}`\n"
         f"📄 **Files:** {file_text}\n"
         f"📦 **Total Size:** {size_text}"
-        )
+    )
 
 
 def read_manifest_original_names(folder):
@@ -903,6 +908,7 @@ async def upload(ctx):
             pass
         await ctx.send(
             f"✅ Archive {archive_id} uploaded successfully.\n"
+            f"🔒 Encryption: {'Enabled' if USER_KEY else 'Disabled'}\n"
             f"📦 Chunks: {chunk_count} • Size: {format_bytes(total_size_bytes)}"
         )
     else:
@@ -1295,10 +1301,12 @@ async def status(ctx):
     last_archive = get_archive_id_from_entry(
         last_entry) if last_entry else "none"
     last_status = last_entry.get("status") if last_entry else "n/a"
+    encryption_enabled = "✅ Enabled" if USER_KEY else "❌ Disabled (USER_KEY not set)"
 
     await ctx.send(
         "📊 **Bot Status**\n"
         f"💾 Drive: {'✅ Ready' if drive_ok else '❌ Missing'}\n"
+        f"🔒 Encryption: {encryption_enabled}\n"
         f"📤 Upload queue: {len(upload_files)} file(s) • {format_bytes(upload_total_size)}\n"
         f"📚 Logs: {len(logs)} entries • ❗ Failed: {failed_count}\n"
         f"🗂️ Last Archive: {last_archive} • Status: {last_status}"
