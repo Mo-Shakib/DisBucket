@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from discord.ext import commands
 import os
@@ -5,6 +6,7 @@ import json
 import datetime
 import glob
 import re
+from slice_and_assemble import assemble_from_manifest
 
 # --- CONFIGURATION ---
 UPLOAD_FOLDER = '/Volumes/Local Drive/DiscordDrive/Uploads'
@@ -179,6 +181,22 @@ async def append_log(entry):
     logs = load_logs()
     logs.append(entry)
     await persist_logs(logs)
+
+async def reassemble_archive(lot_dir, archive_id, ctx=None):
+    if not lot_dir or not os.path.isdir(lot_dir):
+        return
+    try:
+        print(f"🛠️ Reassembling archive {archive_id} from {lot_dir}...")
+        if ctx:
+            await ctx.send(f"🛠️ Reassembling {archive_id} locally...")
+        await asyncio.to_thread(assemble_from_manifest, lot_dir)
+        if ctx:
+            await ctx.send(f"✅ Reassembly complete for {archive_id}.")
+        print(f"✅ Reassembly complete for {archive_id}.")
+    except Exception as e:
+        print(f"⚠️ Reassembly failed for {archive_id}: {e}")
+        if ctx:
+            await ctx.send(f"⚠️ Reassembly failed for {archive_id}: {e}")
 
 def find_log_index(logs, archive_id=None, lot=None):
     normalized_target = normalize_archive_id(archive_id) if archive_id else None
@@ -542,6 +560,7 @@ async def download(ctx, start: str, end: str = None):
                 f"✅ Archive {archive_id} downloaded successfully.\n"
                 f"📥 Downloaded: {success_count} • ⏭️ Skipped: {skipped_count} • 📦 Total: {final_total}"
             )
+            await reassemble_archive(lot_dir, archive_id, ctx)
         else:
             await ctx.send(
                 f"⚠️ Archive {archive_id} downloaded with errors.\n"
