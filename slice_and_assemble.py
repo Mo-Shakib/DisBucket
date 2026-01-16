@@ -4,9 +4,11 @@ import json
 import hashlib
 import datetime
 import re
+import shutil
 from pathlib import Path
 
 LEGACY_MANIFEST = "manifest.json"
+UPLOAD_FOLDER = Path("/Volumes/Local Drive/DiscordDrive/Uploads")
 
 def get_file_hash(file_path):
     """Generates a SHA256 hash for a file's path and name to use as a unique ID."""
@@ -108,8 +110,8 @@ def slice_folder(folder_path, chunk_size_mb=9.5):
         return
 
     chunk_size = int(chunk_size_mb * 1024 * 1024)
-    output_base_dir = folder.parent / f"{folder.name}_processed_chunks"
-    output_base_dir.mkdir(exist_ok=True)
+    output_base_dir = UPLOAD_FOLDER
+    output_base_dir.mkdir(parents=True, exist_ok=True)
 
     # Manifest to store the 'key' for reassembly
     manifest = {
@@ -187,11 +189,12 @@ def assemble_from_manifest(chunks_folder_path):
     if manifest_count > 1:
         print(f"Multiple manifests found. Using most recent: {manifest_path.name}")
 
-    output_dir = folder / "REASSEMBLED_FILES"
+    output_dir = folder.parent
     output_dir.mkdir(exist_ok=True)
 
     print(f"Found instructions for {len(manifest['files'])} files.\n")
 
+    had_errors = False
     for file_id, info in manifest["files"].items():
         original_name = info["original_name"]
         if original_name == ".DS_Store":
@@ -208,15 +211,23 @@ def assemble_from_manifest(chunks_folder_path):
                     chunk_path = folder / chunk_name
                     if not chunk_path.exists():
                         print(f"  CRITICAL ERROR: Missing chunk {chunk_name}")
+                        had_errors = True
                         continue
                     with open(chunk_path, 'rb') as in_f:
                         out_f.write(in_f.read())
             print(f"  Successfully restored to {target_path.name}")
         except Exception as e:
             print(f"  Error reassembling {original_name}: {e}")
+            had_errors = True
 
     print(f"\n--- Reassembly Complete ---")
     print(f"All files restored to: {output_dir}")
+    if not had_errors:
+        try:
+            shutil.rmtree(folder)
+            print(f"🗑️ Removed chunks folder: {folder}")
+        except OSError as e:
+            print(f"⚠️ Could not remove chunks folder {folder}: {e}")
 
 def main():
     print("--- Discord Secure Bulk Slicer & Assembler ---")
