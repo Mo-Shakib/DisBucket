@@ -12,8 +12,9 @@ DOWNLOAD_FOLDER = '/Volumes/Local Drive/DiscordDrive/Downloads'
 # Gets the directory where main.py actually lives
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_FILE = '/Users/shakib/discord-drive-history.json'
-print(f"🧭 Log file path: {os.path.abspath(LOG_FILE)}")
+DEFAULT_LOG_DIR = os.path.join(BASE_DIR, "logs")
+DEFAULT_LOG_FILE = os.path.join(DEFAULT_LOG_DIR, "discord-drive-history.json")
+LEGACY_LOG_FILE = os.path.expanduser("~/discord-drive-history.json")
 
 MANIFEST_PATTERNS = []
 LEGACY_MANIFEST = "manifest.json"
@@ -33,6 +34,26 @@ def load_env_file(path):
 
 ENV_FILE = os.path.join(BASE_DIR, '.env')
 load_env_file(ENV_FILE)
+
+def resolve_log_file():
+    env_path = os.getenv("DISCORD_DRIVE_LOG_FILE")
+    if env_path:
+        return os.path.abspath(os.path.expanduser(env_path))
+    if os.path.exists(LEGACY_LOG_FILE):
+        return LEGACY_LOG_FILE
+    return DEFAULT_LOG_FILE
+
+LOG_FILE = resolve_log_file()
+log_dir = os.path.dirname(LOG_FILE)
+if log_dir:
+    os.makedirs(log_dir, exist_ok=True)
+print(f"🧭 Log file path: {os.path.abspath(LOG_FILE)}")
+
+try:
+    LOG_CHANNEL_ID = int(os.getenv("DISCORD_DRIVE_LOG_CHANNEL_ID", "1461594920568619038"))
+except (TypeError, ValueError):
+    LOG_CHANNEL_ID = 1461594920568619038
+
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 if not TOKEN:
     raise SystemExit("❌ DISCORD_BOT_TOKEN not set. Add it to .env or your environment.")
@@ -104,10 +125,60 @@ def write_logs(logs):
     with open(LOG_FILE, 'w') as f:
         json.dump(logs, f, indent=4)
 
-def append_log(entry):
+async def get_log_channel():
+    if not LOG_CHANNEL_ID:
+        return None
+    channel = bot.get_channel(LOG_CHANNEL_ID)
+    if channel is None:
+        try:
+            channel = await bot.fetch_channel(LOG_CHANNEL_ID)
+        except Exception as e:
+            print(f"⚠️ Could not fetch log channel {LOG_CHANNEL_ID}: {e}")
+            return None
+    return channel
+
+async def download_latest_log_from_channel():
+    channel = await get_log_channel()
+    if channel is None:
+        return
+    target_name = os.path.basename(LOG_FILE)
+    try:
+        async for msg in channel.history(limit=50):
+            for attachment in msg.attachments:
+                if attachment.filename == target_name:
+                    await attachment.save(LOG_FILE)
+                    print(f"⬇️ Restored log from channel {LOG_CHANNEL_ID}: {target_name}")
+                    return
+        print(f"⚠️ No log backup found in channel {LOG_CHANNEL_ID}; using local copy.")
+    except Exception as e:
+        print(f"⚠️ Failed to download log backup: {e}")
+
+async def upload_log_backup():
+    if not os.path.exists(LOG_FILE):
+        print(f"⚠️ Log file not found at {LOG_FILE}; skipping backup upload.")
+        return
+    channel = await get_log_channel()
+    if channel is None:
+        return
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        await channel.send(
+            content=f"🗂️ discord-drive-history.json backup @ {timestamp}",
+            file=discord.File(LOG_FILE, filename=os.path.basename(LOG_FILE)),
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+        print(f"⬆️ Uploaded log backup to channel {LOG_CHANNEL_ID}.")
+    except Exception as e:
+        print(f"⚠️ Failed to upload log backup: {e}")
+
+async def persist_logs(logs):
+    write_logs(logs)
+    await upload_log_backup()
+
+async def append_log(entry):
     logs = load_logs()
     logs.append(entry)
-    write_logs(logs)
+    await persist_logs(logs)
 
 def find_log_index(logs, archive_id=None, lot=None):
     normalized_target = normalize_archive_id(archive_id) if archive_id else None
@@ -243,6 +314,7 @@ def get_next_lot():
 @bot.event
 async def on_ready():
     print(f"🟢 Bot online as {bot.user.name} (ID: {bot.user.id})")
+    await download_latest_log_from_channel()
     print("🤖 Ready and listening for commands.")
 
 @bot.event
@@ -319,7 +391,7 @@ async def upload(ctx):
     }
     if errors:
         entry["errors"] = errors
-    append_log(entry)
+    await append_log(entry)
 
     if status == "success":
         print(f"✅ Upload complete for Archive {archive_id}. Logged {len(uploaded_message_ids)} message(s).")
@@ -569,7 +641,7 @@ async def resume(ctx, archive_id: str = None):
 
     entry["status"] = "success" if not failed_files else "failed"
     logs[target_index] = entry
-    write_logs(logs)
+    await persist_logs(logs)
 
     if entry["status"] == "success":
         await ctx.send(
