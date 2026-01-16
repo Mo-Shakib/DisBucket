@@ -18,7 +18,10 @@ def get_chunk_hash(data):
 
 def clean_path(path_str):
     """Cleans input paths from quotes and extra spaces."""
-    return str(path_str).strip().strip("'").strip('"')
+    cleaned = str(path_str).strip().strip("'").strip('"')
+    cleaned = cleaned.replace("\\ ", " ")
+    cleaned = os.path.expanduser(cleaned)
+    return cleaned
 
 def build_manifest_name(total_chunks, timestamp=None):
     """Builds a manifest name like 123-manifest_HHMMSS_DDMMYY.json."""
