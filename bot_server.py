@@ -17,8 +17,6 @@ from archive_card import (
 )
 
 # --- CONFIGURATION ---
-UPLOAD_FOLDER = '/Volumes/Local Drive/DiscordDrive/Uploads'
-DOWNLOAD_FOLDER = '/Volumes/Local Drive/DiscordDrive/Downloads'
 # Gets the directory where main.py actually lives
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -48,6 +46,26 @@ ENV_FILE = os.path.join(BASE_DIR, '.env')
 load_env_file(ENV_FILE)
 
 
+def resolve_env_path(env_key, default_value):
+    raw_value = os.getenv(env_key)
+    value = raw_value if raw_value else default_value
+    return os.path.abspath(os.path.expanduser(value))
+
+
+DRIVE_PATH = resolve_env_path(
+    "DISCORD_DRIVE_EXTERNAL_DRIVE_PATH",
+    "/Volumes/Local Drive",
+)
+UPLOAD_FOLDER = resolve_env_path(
+    "DISCORD_DRIVE_UPLOAD_PATH",
+    os.path.join(DRIVE_PATH, "DiscordDrive", "Uploads"),
+)
+DOWNLOAD_FOLDER = resolve_env_path(
+    "DISCORD_DRIVE_DOWNLOAD_PATH",
+    os.path.join(DRIVE_PATH, "DiscordDrive", "Downloads"),
+)
+
+
 def resolve_log_file():
     env_path = os.getenv("DISCORD_DRIVE_LOG_FILE")
     if env_path:
@@ -63,40 +81,58 @@ if log_dir:
     os.makedirs(log_dir, exist_ok=True)
 print(f"🧭 Log file path: {os.path.abspath(LOG_FILE)}")
 
-try:
-    LOG_CHANNEL_ID = int(
-        os.getenv("DISCORD_DRIVE_LOG_CHANNEL_ID", "1461594920568619038"))
-except (TypeError, ValueError):
-    LOG_CHANNEL_ID = 1461594920568619038
 
-try:
-    ARCHIVE_CHANNEL_ID = int(
-        os.getenv("DISCORD_DRIVE_ARCHIVE_CHANNEL_ID", "1461732803375923251"))
-except (TypeError, ValueError):
-    ARCHIVE_CHANNEL_ID = 1461732803375923251
+def parse_optional_int(env_key, fallback_env_key=None):
+    raw = os.getenv(env_key)
+    if (raw is None or raw == "") and fallback_env_key:
+        raw = os.getenv(fallback_env_key)
+    if raw is None or raw == "":
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
 
-try:
-    storage_env = os.getenv("DISCORD_DRIVE_STORAGE_CHANNEL_ID")
-    STORAGE_CHANNEL_ID = int(storage_env) if storage_env else None
-except (TypeError, ValueError):
-    STORAGE_CHANNEL_ID = None
+
+def parse_required_int(env_key):
+    value = parse_optional_int(env_key)
+    if value is None:
+        raise SystemExit(
+            f"❌ {env_key} not set or invalid. Add it to .env or your environment."
+        )
+    return value
+
+
+LOG_CHANNEL_ID = parse_optional_int("DISCORD_DRIVE_LOG_CHANNEL_ID")
+ARCHIVE_CHANNEL_ID = parse_required_int("DISCORD_DRIVE_ARCHIVE_CHANNEL_ID")
+STORAGE_CHANNEL_ID = parse_optional_int(
+    "DISCORD_DRIVE_STORAGE_CHANNEL_ID",
+    fallback_env_key="STORAGE_CHANNEL_ID",
+)
+DATABASE_CHANNEL_ID = parse_optional_int(
+    "DISCORD_DRIVE_DATABASE",
+    fallback_env_key="DISCORD_DRIVE_DATABASE_CHANNEL_ID",
+)
 
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 if not TOKEN:
     raise SystemExit(
         "❌ DISCORD_BOT_TOKEN not set. Add it to .env or your environment.")
 
-# This check prevents the bot from crashing if the drive isn't plugged in
-if not os.path.exists('/Volumes/Local Drive'):
-    print("❌ External drive 'Local Drive' not found. Please check the connection.")
+# This check prevents the bot from crashing if the drive isn't plugged in.
+# Skip the drive check if custom upload/download paths are provided.
+using_default_drive_paths = not (
+    os.getenv("DISCORD_DRIVE_UPLOAD_PATH")
+    or os.getenv("DISCORD_DRIVE_DOWNLOAD_PATH")
+)
+if using_default_drive_paths and not os.path.exists(DRIVE_PATH):
+    print(
+        f"❌ External drive not found at '{DRIVE_PATH}'. Please check the connection."
+    )
 else:
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
-    print("✅ External drive detected. Upload/Download folders ready.")
-
-# Ensure directories exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+    print("✅ Upload/Download folders ready.")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -186,6 +222,20 @@ async def get_archive_channel():
     return channel
 
 
+async def get_database_channel():
+    if not DATABASE_CHANNEL_ID:
+        return None
+    channel = bot.get_channel(DATABASE_CHANNEL_ID)
+    if channel is None:
+        try:
+            channel = await bot.fetch_channel(DATABASE_CHANNEL_ID)
+        except Exception as e:
+            print(
+                f"⚠️ Could not fetch database channel {DATABASE_CHANNEL_ID}: {e}")
+            return None
+    return channel
+
+
 async def get_storage_channel(ctx):
     if STORAGE_CHANNEL_ID:
         channel = bot.get_channel(STORAGE_CHANNEL_ID)
@@ -198,6 +248,21 @@ async def get_storage_channel(ctx):
                 return None
         return channel
     return ctx.channel
+
+
+def build_database_entry_text(archive_id, timestamp, file_count, total_size_bytes):
+    date_text = timestamp or "unknown"
+    file_text = f"{file_count}" if isinstance(file_count, int) else "unknown"
+    size_text = format_bytes(
+        total_size_bytes) if total_size_bytes is not None else "Unknown size"
+    return (
+        "**📤 New archive uploaded**\n"
+        "────────────────────────\n"
+        f"📅 **Date:** {date_text}\n"
+        f"🆔 **Archive ID:** `{archive_id}`\n"
+        f"📄 **Files:** {file_text}\n"
+        f"📦 **Total Size:** {size_text}"
+        )
 
 
 def read_manifest_original_names(folder):
@@ -819,6 +884,19 @@ async def upload(ctx):
 
     if status == "success":
         print(f"✅ Upload complete for Archive {archive_id}.")
+        database_channel = await get_database_channel()
+        if database_channel is not None:
+            try:
+                await database_channel.send(
+                    build_database_entry_text(
+                        archive_id,
+                        timestamp,
+                        file_count or len(uploaded_files),
+                        total_size_bytes,
+                    )
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to write database entry: {e}")
         try:
             await archive_message.pin()
         except Exception:
@@ -1179,6 +1257,19 @@ async def resume(ctx, archive_id: Optional[str] = None):
             print(f"⚠️ Failed to update archive card on resume: {e}")
 
     if entry["status"] == "success":
+        database_channel = await get_database_channel()
+        if database_channel is not None:
+            try:
+                await database_channel.send(
+                    build_database_entry_text(
+                        archive_id,
+                        entry.get("timestamp"),
+                        entry.get("file_count"),
+                        entry.get("total_size_bytes"),
+                    )
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to write database entry: {e}")
         await ctx.send(
             f"✅ Archive {archive_id} successfully completed.\n"
             f"📦 Files: {entry['file_count']} • "

@@ -8,7 +8,34 @@ import shutil
 from pathlib import Path
 
 LEGACY_MANIFEST = "manifest.json"
-UPLOAD_FOLDER = Path("/Volumes/Local Drive/DiscordDrive/Uploads")
+
+BASE_DIR = Path(__file__).resolve().parent
+
+def load_env_file(path):
+    if not path.exists():
+        return
+    with path.open("r") as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            os.environ.setdefault(key, value)
+
+ENV_FILE = BASE_DIR / ".env"
+load_env_file(ENV_FILE)
+
+def resolve_env_path(env_key, default_value):
+    raw_value = os.getenv(env_key)
+    value = raw_value if raw_value else default_value
+    return Path(os.path.expanduser(value)).resolve()
+
+UPLOAD_FOLDER = resolve_env_path(
+    "DISCORD_DRIVE_UPLOAD_PATH",
+    "/Volumes/Local Drive/DiscordDrive/Uploads",
+)
 
 def get_file_hash(file_path):
     """Generates a SHA256 hash for a file's path and name to use as a unique ID."""
