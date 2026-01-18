@@ -81,9 +81,9 @@ async def create_archive_card(
         Discord message created.
     """
     title = batch_metadata.get("title") or "Untitled Batch"
-    tags = batch_metadata.get("tags") or "none"
-    description = batch_metadata.get("description") or "No description"
-    uploaded_at = batch_metadata.get("upload_date") or "just now"
+    tags = batch_metadata.get("tags")
+    description = batch_metadata.get("description")
+    uploaded_at = batch_metadata.get("upload_date")
     thread_id = batch_metadata.get("thread_id")
 
     def _truncate(value: str, limit: int = 1024) -> str:
@@ -91,28 +91,48 @@ async def create_archive_card(
             return value
         return value[: limit - 3] + "..."
 
-    embed = discord.Embed(
-        title="New Batch Uploaded",
-        color=discord.Color.blurple(),
+    def _display(value: Optional[Any], default: str = "N/A") -> str:
+        if value is None or value == "":
+            return default
+        return str(value)
+
+    def _format_size(value: Optional[Any]) -> str:
+        if value is None or value == "":
+            return "N/A"
+        try:
+            return format_bytes(int(value))
+        except (TypeError, ValueError):
+            return "N/A"
+
+    def _format_uploaded(value: Optional[Any]) -> str:
+        if value is None or value == "":
+            return "N/A"
+        try:
+            return f"<t:{int(value)}:f>"
+        except (TypeError, ValueError):
+            return str(value)
+
+    stats = (
+        f"{_format_size(batch_metadata.get('total_size'))} • "
+        f"{_display(batch_metadata.get('file_count'))} File"
+        f"{'' if str(batch_metadata.get('file_count')) == '1' else 's'} • "
+        f"{_display(batch_metadata.get('chunk_count'))} Chunk"
+        f"{'' if str(batch_metadata.get('chunk_count')) == '1' else 's'}"
     )
-    embed.add_field(name="Batch ID",
-                    value=f"`{batch_metadata['batch_id']}`", inline=False)
-    embed.add_field(name="Title", value=_truncate(title, 256), inline=True)
-    embed.add_field(name="Tags", value=_truncate(tags, 256), inline=True)
-    embed.add_field(name="Files", value=str(
-        batch_metadata["file_count"]), inline=True)
-    embed.add_field(
-        name="Size", value=format_bytes(int(batch_metadata["total_size"])), inline=True
-    )
-    embed.add_field(name="Chunks", value=str(
-        batch_metadata["chunk_count"]), inline=True)
-    embed.add_field(name="Uploaded", value=uploaded_at, inline=True)
-    embed.add_field(name="Description", value=_truncate(
-        description), inline=False)
+
+    technical_ids = f"**Batch ID:** `{_display(batch_metadata.get('batch_id'))}`"
     if thread_id:
-        embed.add_field(name="Thread", value=f"`{thread_id}`", inline=False)
-    embed.set_footer(text="Discord Storage Bot")
-    return await index_channel.send(content="📦 **New Batch Uploaded**", embed=embed)
+        technical_ids += f"\n**Thread:** `{thread_id}`"
+    content = (
+        f"🗓️ **{_format_uploaded(uploaded_at)}**\n\n"
+        f"📦 **Title:** {_truncate(_display(title, 'Untitled Batch'), 256)}\n"
+        f"📝 **Description:** {_truncate(_display(description), 512)}\n"
+        f"🏷️ **Tags:** {_truncate(_display(tags), 256)}\n"
+        f"📊 **Statistics:** {stats}\n"
+        f"{technical_ids}\n"
+        "Discord Storage Bot 🚀"
+    )
+    return await index_channel.send(content=content)
 
 
 async def create_thread(message: discord.Message, name: str) -> discord.Thread:
