@@ -182,7 +182,7 @@
             <div class="flex items-center gap-4">
                 <div class="relative group">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-discord-light group-focus-within:text-discord-brand transition-colors"></i>
-                    <input type="text" placeholder="Global Search..." class="bg-discord-element border border-discord-divider rounded-full py-2 pl-10 pr-4 text-sm w-64 text-white focus:w-72 transition-all shadow-sm">
+                    <input id="global-search" type="text" placeholder="Global Search..." class="bg-discord-element border border-discord-divider rounded-full py-2 pl-10 pr-4 text-sm w-64 text-white focus:w-72 transition-all shadow-sm">
                 </div>
                 <button id="refresh-btn" class="w-10 h-10 rounded-full bg-discord-element hover:bg-discord-brand text-discord-light hover:text-white border border-discord-divider hover:border-discord-brand transition-all flex items-center justify-center shadow-sm" title="Refresh Data">
                     <i class="fa-solid fa-rotate"></i>
@@ -392,7 +392,7 @@
                  <div class="flex items-center justify-between bg-discord-sidebar p-2 rounded-2xl border border-discord-divider">
                     <div class="relative w-full max-w-md">
                         <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-discord-light"></i>
-                        <input type="text" placeholder="Filter batches..." class="w-full bg-transparent border-none rounded-xl py-3 pl-12 pr-4 text-white text-sm focus:ring-0 placeholder-discord-light/50">
+                        <input id="batch-search" type="text" placeholder="Filter batches..." class="w-full bg-transparent border-none rounded-xl py-3 pl-12 pr-4 text-white text-sm focus:ring-0 placeholder-discord-light/50">
                     </div>
                     <div class="flex gap-2 pr-2">
                          <button class="w-9 h-9 rounded-lg bg-discord-element hover:bg-discord-hover text-discord-light flex items-center justify-center transition-colors" title="Grid View (Coming Soon)">
@@ -668,49 +668,81 @@
             } catch (e) { console.log("Stats load error"); }
         };
 
+        const globalSearchInput = document.getElementById('global-search');
+        const batchSearchInput = document.getElementById('batch-search');
+        let globalSearchTerm = '';
+        let batchSearchTerm = '';
+        let allBatches = [];
+
+        const normalizeSearch = (value) => value.trim().toLowerCase();
+
+        const getFilteredBatches = () => {
+            const query = normalizeSearch(`${globalSearchTerm} ${batchSearchTerm}`);
+            if (!query) return allBatches;
+            const terms = query.split(/\s+/).filter(Boolean);
+            return allBatches.filter((batch) => {
+                const haystack = [
+                    batch.batch_id,
+                    batch.original_name,
+                    batch.status
+                ].join(' ').toLowerCase();
+                return terms.every((term) => haystack.includes(term));
+            });
+        };
+
+        const renderBatches = () => {
+            const table = document.getElementById('batch-table');
+            const emptyState = document.getElementById('empty-state');
+            const batchesToRender = getFilteredBatches();
+
+            table.innerHTML = '';
+
+            if (!batchesToRender || batchesToRender.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            batchesToRender.forEach((batch) => {
+                const row = document.createElement('tr');
+                row.className = 'group hover:bg-discord-hover/50 transition-colors';
+
+                let statusBadge = `<span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase bg-discord-bg text-discord-light border border-discord-divider">${batch.status}</span>`;
+                if (batch.status === 'complete') {
+                    statusBadge = `<span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase bg-green-500/10 text-green-400 border border-green-500/20">Synced</span>`;
+                }
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-mono text-xs text-discord-light group-hover:text-white transition-colors">
+                        <span class="opacity-70">#</span>${batch.batch_id}
+                    </td>
+                    <td class="px-6 py-4 font-bold text-white flex items-center gap-3">
+                        <div class="w-8 h-8 rounded bg-discord-element flex items-center justify-center text-discord-brand">
+                            <i class="fa-solid fa-file-zipper"></i>
+                        </div>
+                        ${batch.original_name}
+                    </td>
+                    <td class="px-6 py-4 text-discord-light font-mono text-xs">${formatBytes(batch.total_size)}</td>
+                    <td class="px-6 py-4">${statusBadge}</td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button class="w-8 h-8 rounded-full bg-discord-element hover:bg-discord-brand text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Download" data-action="download" data-id="${batch.batch_id}"><i class="fa-solid fa-download"></i></button>
+                            <button class="w-8 h-8 rounded-full bg-discord-element hover:bg-green-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Verify" data-action="verify" data-id="${batch.batch_id}"><i class="fa-solid fa-check"></i></button>
+                            <button class="w-8 h-8 rounded-full bg-discord-element hover:bg-red-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Delete" data-action="delete" data-id="${batch.batch_id}"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                table.appendChild(row);
+            });
+        };
+
         const loadBatches = async () => {
             try {
                 const res = await fetch('/api/batches');
                 const batches = await res.json();
-                const table = document.getElementById('batch-table');
-                table.innerHTML = '';
-                
-                if (!batches || batches.length === 0) {
-                    document.getElementById('empty-state').classList.remove('hidden');
-                    return;
-                } else {
-                    document.getElementById('empty-state').classList.add('hidden');
-                }
-
-                batches.forEach((batch) => {
-                    const row = document.createElement('tr');
-                    row.className = 'group hover:bg-discord-hover/50 transition-colors';
-                    
-                    let statusBadge = `<span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase bg-discord-bg text-discord-light border border-discord-divider">${batch.status}</span>`;
-                    if(batch.status === 'complete') statusBadge = `<span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase bg-green-500/10 text-green-400 border border-green-500/20">Synced</span>`;
-                    
-                    row.innerHTML = `
-                        <td class="px-6 py-4 font-mono text-xs text-discord-light group-hover:text-white transition-colors">
-                            <span class="opacity-70">#</span>${batch.batch_id}
-                        </td>
-                        <td class="px-6 py-4 font-bold text-white flex items-center gap-3">
-                            <div class="w-8 h-8 rounded bg-discord-element flex items-center justify-center text-discord-brand">
-                                <i class="fa-solid fa-file-zipper"></i>
-                            </div>
-                            ${batch.original_name}
-                        </td>
-                        <td class="px-6 py-4 text-discord-light font-mono text-xs">${formatBytes(batch.total_size)}</td>
-                        <td class="px-6 py-4">${statusBadge}</td>
-                        <td class="px-6 py-4 text-right">
-                            <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button class="w-8 h-8 rounded-full bg-discord-element hover:bg-discord-brand text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Download" data-action="download" data-id="${batch.batch_id}"><i class="fa-solid fa-download"></i></button>
-                                <button class="w-8 h-8 rounded-full bg-discord-element hover:bg-green-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Verify" data-action="verify" data-id="${batch.batch_id}"><i class="fa-solid fa-check"></i></button>
-                                <button class="w-8 h-8 rounded-full bg-discord-element hover:bg-red-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Delete" data-action="delete" data-id="${batch.batch_id}"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        </td>
-                    `;
-                    table.appendChild(row);
-                });
+                allBatches = Array.isArray(batches) ? batches : [];
+                renderBatches();
             } catch (e) { console.log("Batches load error"); }
         };
 
@@ -719,6 +751,36 @@
             loadStats();
             loadBatches();
         });
+
+        if (globalSearchInput) {
+            globalSearchInput.addEventListener('input', () => {
+                const value = globalSearchInput.value;
+                if (value.trim()) {
+                    switchView('batches');
+                    if (batchSearchInput) {
+                        batchSearchInput.value = value;
+                        batchSearchTerm = value;
+                        globalSearchTerm = '';
+                    } else {
+                        globalSearchTerm = value;
+                    }
+                } else {
+                    globalSearchTerm = '';
+                    if (batchSearchInput) {
+                        batchSearchInput.value = '';
+                        batchSearchTerm = '';
+                    }
+                }
+                renderBatches();
+            });
+        }
+
+        if (batchSearchInput) {
+            batchSearchInput.addEventListener('input', () => {
+                batchSearchTerm = batchSearchInput.value;
+                renderBatches();
+            });
+        }
 
         document.getElementById('refresh-btn').addEventListener('click', async () => {
             const btn = document.getElementById('refresh-btn');
