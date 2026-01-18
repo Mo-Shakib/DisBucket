@@ -80,6 +80,7 @@
         /* Gradient Text */
         .text-gradient {
             background: linear-gradient(to right, #ffffff, #9ca3af);
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -98,6 +99,30 @@
             height: 100%;
             background: rgba(255, 255, 255, 0.03);
             pointer-events: none;
+        }
+
+        /* Terminal Animation */
+        .terminal-line {
+            opacity: 0;
+            transform: translateY(6px);
+            animation: terminal-reveal 9s infinite;
+        }
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1em;
+            margin-left: 4px;
+            background: #f2f3f5;
+            animation: blink 1s step-end infinite;
+            vertical-align: -2px;
+        }
+        @keyframes terminal-reveal {
+            0%, 12% { opacity: 0; transform: translateY(6px); }
+            16%, 100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
         }
     </style>
 </head>
@@ -159,7 +184,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
             <div class="inline-flex items-center px-4 py-2 rounded-full border border-discord-light/20 bg-discord-dark/50 backdrop-blur-sm mb-8 reveal">
                 <span class="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-                <span class="text-sm font-mono text-discord-light">v2.0.0 Latest Release</span>
+                <span class="text-sm font-mono text-discord-light">v3.0.0 Latest Release</span>
             </div>
 
             <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 reveal" style="transition-delay: 100ms;">
@@ -168,8 +193,8 @@
             </h1>
 
             <p class="mt-4 max-w-2xl mx-auto text-xl text-discord-light reveal" style="transition-delay: 200ms;">
-                A lightweight, resumable object store using Discord as the backend. 
-                AES-256 encrypted, Gzip compressed, and fully chunked.
+                Turn Discord into secure, distributed file storage with compression, encryption,
+                chunked uploads, and a local metadata database for fast search.
             </p>
 
             <div class="mt-10 flex flex-col sm:flex-row justify-center gap-4 px-4 sm:px-0 reveal" style="transition-delay: 300ms;">
@@ -187,13 +212,30 @@
                     <div class="w-3 h-3 rounded-full bg-red-500"></div>
                     <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
                     <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                    <span class="ml-4 text-xs text-discord-light font-mono">bot_server.py — active</span>
+                    <span class="ml-4 text-xs text-discord-light font-mono">terminal — discord-object-store</span>
                 </div>
                 <div class="font-mono text-left text-sm md:text-base space-y-2">
-                    <div class="flex"><span class="text-gray-500 w-6">1</span> <span class="text-purple-400">await</span> ctx.send(<span class="text-green-400">"Uploading chunk 42/100..."</span>)</div>
-                    <div class="flex"><span class="text-gray-500 w-6">2</span> <span class="text-blue-400">Encrypting:</span> AES-256-GCM [Salted]</div>
-                    <div class="flex"><span class="text-gray-500 w-6">3</span> <span class="text-yellow-400">Compression:</span> Gzip Level 9 (Reduced by 45%)</div>
-                    <div class="flex"><span class="text-gray-500 w-6">4</span> <span class="text-green-500">✓ Upload Complete.</span> Thread #Archive-120225 created.</div>
+                    <div class="terminal-line" style="animation-delay: 0s;">
+                        <span class="text-gray-500">$</span> python bot.py upload ./backups/photos<span class="terminal-cursor"></span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 0.9s;">
+                        <span class="text-purple-400">[scan]</span> 312 files, 1.8GB
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 1.8s;">
+                        <span class="text-yellow-400">[pack]</span> archive.tar.gz created (45% smaller)
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 2.7s;">
+                        <span class="text-blue-400">[encrypt]</span> PBKDF2 + AES-256
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 3.6s;">
+                        <span class="text-purple-400">[split]</span> 190 chunks @ 9.5MB
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 4.5s;">
+                        <span class="text-blue-400">[upload]</span> Thread created: batch #20260118-01
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 5.4s;">
+                        <span class="text-green-500">[done]</span> Metadata saved to SQLite (WAL)
+                    </div>
                 </div>
             </div>
         </div>
@@ -204,7 +246,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16 reveal">
                 <h2 class="text-3xl font-bold text-white mb-4">Core Capabilities</h2>
-                <p class="text-discord-light max-w-2xl mx-auto">Everything you need to turn a chat channel into a robust file system.</p>
+                <p class="text-discord-light max-w-2xl mx-auto">Everything you need to turn Discord into a secure, searchable object store.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -213,8 +255,8 @@
                     <div class="w-12 h-12 bg-discord-darker rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-layer-group text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-2">Smart Chunking</h3>
-                    <p class="text-discord-light text-sm leading-relaxed">Files are automatically split into ~9.5MB chunks to respect Discord's attachment limits, ensuring strict compliance and reliability.</p>
+                    <h3 class="text-xl font-bold mb-2">Chunked Uploads</h3>
+                    <p class="text-discord-light text-sm leading-relaxed">Archives are split into 9.5MB chunks to respect Discord limits, with resumable uploads for large data.</p>
                 </div>
 
                 <!-- Feature 2 -->
@@ -222,8 +264,8 @@
                     <div class="w-12 h-12 bg-discord-darker rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-lock text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-2">AES-256 Encryption</h3>
-                    <p class="text-discord-light text-sm leading-relaxed">Your data is yours. PBKDF2 key derivation and AES-256-GCM encryption ensure files are unreadable without your passphrase.</p>
+                    <h3 class="text-xl font-bold mb-2">Strong Encryption</h3>
+                    <p class="text-discord-light text-sm leading-relaxed">PBKDF2-derived keys with per-batch salts and AES-256 (Fernet) encryption keep data private.</p>
                 </div>
 
                 <!-- Feature 3 -->
@@ -231,8 +273,8 @@
                     <div class="w-12 h-12 bg-discord-darker rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-file-zipper text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-2">High Compression</h3>
-                    <p class="text-discord-light text-sm leading-relaxed">Built-in Gzip (Level 9) compression before encryption maximizes storage efficiency and speeds up transfers.</p>
+                    <h3 class="text-xl font-bold mb-2">Compression First</h3>
+                    <p class="text-discord-light text-sm leading-relaxed">Files are bundled into a .tar.gz archive before encryption to maximize storage efficiency.</p>
                 </div>
 
                 <!-- Feature 4 -->
@@ -241,7 +283,7 @@
                         <i class="fa-solid fa-rotate-right text-white text-xl"></i>
                     </div>
                     <h3 class="text-xl font-bold mb-2">Resumable Transfers</h3>
-                    <p class="text-discord-light text-sm leading-relaxed">Internet dropout? No problem. The <code>!resume</code> command picks up exactly where it left off, skipping already verified chunks.</p>
+                    <p class="text-discord-light text-sm leading-relaxed">Resume stalled uploads with <code>resume</code> and verify integrity with SHA-256.</p>
                 </div>
 
                 <!-- Feature 5 -->
@@ -250,7 +292,7 @@
                         <i class="fa-solid fa-magnifying-glass text-white text-xl"></i>
                     </div>
                     <h3 class="text-xl font-bold mb-2">Metadata & Search</h3>
-                    <p class="text-discord-light text-sm leading-relaxed">Archive cards provide rich metadata. Search your "drive" instantly with <code>!archives [query]</code> directly from Discord.</p>
+                    <p class="text-discord-light text-sm leading-relaxed">SQLite with WAL and indexes for fast batch search, detailed stats, and sync from Discord.</p>
                 </div>
 
                 <!-- Feature 6 -->
@@ -258,8 +300,8 @@
                     <div class="w-12 h-12 bg-discord-darker rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <i class="fa-brands fa-python text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-2">Pure Python</h3>
-                    <p class="text-discord-light text-sm leading-relaxed">Built on <code>discord.py</code> and standard cryptography libraries. Easy to audit, easy to modify, and cross-platform.</p>
+                    <h3 class="text-xl font-bold mb-2">Friendly CLI</h3>
+                    <p class="text-discord-light text-sm leading-relaxed">Simple CLI for uploads, downloads, listing, info, and stats—built for non-technical users.</p>
                 </div>
             </div>
         </div>
@@ -280,15 +322,15 @@
                 <!-- Step 1 -->
                 <div class="relative flex flex-col-reverse lg:flex-row items-center mb-16 reveal">
                     <div class="flex-1 text-center lg:text-right lg:pr-12 mt-4 lg:mt-0 lg:mb-0">
-                        <h3 class="text-2xl font-bold text-white">Slice & Encrypt</h3>
-                        <p class="text-discord-light mt-2">Run <code>slice_and_assemble.py</code>. It processes your folder, compresses files, encrypts them, and splits them into .bin chunks plus a JSON manifest.</p>
+                        <h3 class="text-2xl font-bold text-white">Package & Encrypt</h3>
+                        <p class="text-discord-light mt-2">The CLI bundles your files into a <code>.tar.gz</code>, encrypts with PBKDF2-derived keys, then splits into upload chunks.</p>
                     </div>
                     <div class="w-12 h-12 rounded-full bg-discord-white text-discord-bg flex items-center justify-center font-bold z-10 shadow-[0_0_15px_rgba(255,255,255,0.3)]">1</div>
                     <div class="flex-1 lg:pl-12 hidden lg:block">
                         <div class="bg-discord-darker p-4 rounded-lg border border-discord-divider font-mono text-xs text-gray-400">
-                            > Processing video.mp4 (2GB)...<br>
-                            > Chunk 1: encrypted (Salt: x82a...)<br>
-                            > Chunk 2: encrypted
+                            > Scanning folder...<br>
+                            > Creating archive.tar.gz...<br>
+                            > Encrypting and splitting...
                         </div>
                     </div>
                 </div>
@@ -297,15 +339,15 @@
                 <div class="relative flex flex-col lg:flex-row items-center mb-16 reveal">
                     <div class="flex-1 lg:pr-12 hidden lg:block text-right">
                         <div class="bg-discord-darker p-4 rounded-lg border border-discord-divider font-mono text-xs text-gray-400">
-                            [Bot] !upload<br>
-                            [Bot] Creating Thread: Archive #001<br>
-                            [Bot] Uploading 205 files...
+                            $ python bot.py upload ./data<br>
+                            [Bot] Creating batch card...<br>
+                            [Bot] Uploading 190 chunks...
                         </div>
                     </div>
                     <div class="w-12 h-12 rounded-full bg-discord-darker border-2 border-discord-white text-white flex items-center justify-center font-bold z-10">2</div>
                     <div class="flex-1 text-center lg:text-left lg:pl-12 mt-4 lg:mt-0">
                         <h3 class="text-2xl font-bold text-white">Upload to Discord</h3>
-                        <p class="text-discord-light mt-2">Use <code>!upload</code>. The bot creates an Archive Card and a dedicated thread, uploading chunks concurrently. Local chunks are deleted upon success to save space.</p>
+                        <p class="text-discord-light mt-2">Use <code>python bot.py upload</code>. The bot posts a batch card, creates a thread, and uploads chunks concurrently.</p>
                     </div>
                 </div>
 
@@ -313,14 +355,14 @@
                 <div class="relative flex flex-col-reverse lg:flex-row items-center mb-16 reveal">
                     <div class="flex-1 text-center lg:text-right lg:pr-12 mt-4 lg:mt-0 lg:mb-0">
                         <h3 class="text-2xl font-bold text-white">Download & Restore</h3>
-                        <p class="text-discord-light mt-2">Use <code>!download #Archive-ID</code>. The bot fetches the attachments. Run the assembler script to decrypt, decompress, and reconstruct your original files perfectly.</p>
+                        <p class="text-discord-light mt-2">Use <code>python bot.py download &lt;batch_id&gt;</code>. Chunks are verified, merged, decrypted, and extracted.</p>
                     </div>
                     <div class="w-12 h-12 rounded-full bg-discord-darker border-2 border-discord-white text-white flex items-center justify-center font-bold z-10">3</div>
                     <div class="flex-1 lg:pl-12 hidden lg:block">
                          <div class="bg-discord-darker p-4 rounded-lg border border-discord-divider font-mono text-xs text-gray-400">
-                            > Verifying Manifest... OK<br>
-                            > Decrypting chunk 1... OK<br>
-                            > Reassembled: video.mp4
+                            > Verifying hashes... OK<br>
+                            > Decrypting archive... OK<br>
+                            > Extracted: ./data
                         </div>
                     </div>
                 </div>
@@ -336,7 +378,7 @@
             <div class="space-y-8">
                 <!-- Step 1 Code -->
                 <div class="reveal">
-                    <h3 class="text-lg font-semibold text-discord-white mb-3"><i class="fa-solid fa-terminal mr-2"></i>1. Clone and Install Dependencies</h3>
+                    <h3 class="text-lg font-semibold text-discord-white mb-3"><i class="fa-solid fa-terminal mr-2"></i>1. Create Virtual Env & Install</h3>
                     <div class="code-block bg-discord-darker rounded-lg border border-discord-divider p-4 font-mono text-sm text-gray-300">
                         <button onclick="copyToClipboard(this)" class="absolute top-3 right-3 text-xs bg-discord-bg border border-discord-divider px-2 py-1 rounded hover:bg-discord-light/20 transition-colors">Copy</button>
                         <pre><code>git clone https://github.com/Mo-Shakib/discord-object-store.git
@@ -349,17 +391,11 @@ pip install -r requirements.txt</code></pre>
 
                 <!-- Step 2 Env -->
                 <div class="reveal">
-                    <h3 class="text-lg font-semibold text-discord-white mb-3"><i class="fa-solid fa-gear mr-2"></i>2. Configure .env</h3>
-                    <p class="text-discord-light text-sm mb-2">Create a <code>.env</code> file in the root directory.</p>
+                    <h3 class="text-lg font-semibold text-discord-white mb-3"><i class="fa-solid fa-gear mr-2"></i>2. Run Setup Wizard</h3>
+                    <p class="text-discord-light text-sm mb-2">Let the wizard save your token, generate keys, and configure channels.</p>
                     <div class="code-block bg-discord-darker rounded-lg border border-discord-divider p-4 font-mono text-sm text-gray-300">
                         <button onclick="copyToClipboard(this)" class="absolute top-3 right-3 text-xs bg-discord-bg border border-discord-divider px-2 py-1 rounded hover:bg-discord-light/20 transition-colors">Copy</button>
-                        <pre><code>DISCORD_BOT_TOKEN=your_bot_token_here
-DISCORD_DRIVE_ARCHIVE_CHANNEL_ID=123456789012345678
-USER_KEY=your-strong-passphrase-for-encryption
-
-# Optional: Paths (Defaults to OS specifics)
-DISCORD_DRIVE_UPLOAD_PATH=./uploads
-DISCORD_DRIVE_DOWNLOAD_PATH=./downloads</code></pre>
+                        <pre><code>python setup.py</code></pre>
                     </div>
                 </div>
             </div>
@@ -369,9 +405,12 @@ DISCORD_DRIVE_DOWNLOAD_PATH=./downloads</code></pre>
     <!-- Commands Table -->
     <section id="commands" class="py-24 bg-discord-bg">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-bold text-white mb-10 text-center reveal">Bot Commands</h2>
+            <h2 class="text-3xl font-bold text-white mb-10 text-center reveal">CLI Commands</h2>
             
             <div class="overflow-x-auto rounded-xl border border-discord-divider reveal">
+                <div class="px-4 py-3 bg-discord-dark border-b border-discord-divider text-discord-light text-sm">
+                    All commands run in the CLI. This version has no Discord chat commands.
+                </div>
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-discord-dark border-b border-discord-divider text-discord-light text-xs uppercase tracking-wider">
@@ -381,28 +420,28 @@ DISCORD_DRIVE_DOWNLOAD_PATH=./downloads</code></pre>
                     </thead>
                     <tbody class="divide-y divide-discord-divider bg-discord-dark/50">
                         <tr class="hover:bg-discord-dark/80 transition-colors">
-                            <td class="p-4 font-mono text-white whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300">!upload</span></td>
-                            <td class="p-4 text-discord-light text-sm">Upload all .bin and manifest files currently in the upload folder to a new archive thread.</td>
+                            <td class="p-4 font-mono text-white whitespace-normal sm:whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300 break-all">python bot.py upload &lt;path&gt;</span></td>
+                            <td class="p-4 text-discord-light text-sm">Upload a file or folder, create a batch card, and store chunks in a thread.</td>
                         </tr>
                         <tr class="hover:bg-discord-dark/80 transition-colors">
-                            <td class="p-4 font-mono text-white whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300">!download #ID</span></td>
-                            <td class="p-4 text-discord-light text-sm">Download an archive by its ID (e.g., #120225-01). Supports ranges like [#A..#B].</td>
+                            <td class="p-4 font-mono text-white whitespace-normal sm:whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300 break-all">python bot.py download &lt;batch_id&gt;</span></td>
+                            <td class="p-4 text-discord-light text-sm">Download and reconstruct a batch to a local path.</td>
                         </tr>
                         <tr class="hover:bg-discord-dark/80 transition-colors">
-                            <td class="p-4 font-mono text-white whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300">!resume [ID]</span></td>
-                            <td class="p-4 text-discord-light text-sm">Retry missing chunks for the last failed archive or a specific ID.</td>
+                            <td class="p-4 font-mono text-white whitespace-normal sm:whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300 break-all">python bot.py resume &lt;batch_id&gt;</span></td>
+                            <td class="p-4 text-discord-light text-sm">Resume an interrupted upload.</td>
                         </tr>
                         <tr class="hover:bg-discord-dark/80 transition-colors">
-                            <td class="p-4 font-mono text-white whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300">!status</span></td>
-                            <td class="p-4 text-discord-light text-sm">Show drive stats, queue size, encryption status, and last archive info.</td>
+                            <td class="p-4 font-mono text-white whitespace-normal sm:whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300 break-all">python bot.py stats</span></td>
+                            <td class="p-4 text-discord-light text-sm">Show storage statistics and recent batch info.</td>
                         </tr>
                         <tr class="hover:bg-discord-dark/80 transition-colors">
-                            <td class="p-4 font-mono text-white whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300">!archives [q]</span></td>
-                            <td class="p-4 text-discord-light text-sm">List or search recent archives by ID or filename query.</td>
+                            <td class="p-4 font-mono text-white whitespace-normal sm:whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300 break-all">python bot.py list</span></td>
+                            <td class="p-4 text-discord-light text-sm">List batches with metadata from the local database.</td>
                         </tr>
                         <tr class="hover:bg-discord-dark/80 transition-colors">
-                            <td class="p-4 font-mono text-white whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300">!verify #ID</span></td>
-                            <td class="p-4 text-discord-light text-sm">Verify that all chunks exist in the archive thread.</td>
+                            <td class="p-4 font-mono text-white whitespace-normal sm:whitespace-nowrap"><span class="bg-discord-darker px-2 py-1 rounded text-purple-300 break-all">python bot.py verify &lt;batch_id&gt;</span></td>
+                            <td class="p-4 text-discord-light text-sm">Verify integrity with SHA-256 and report missing chunks.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -416,10 +455,45 @@ DISCORD_DRIVE_DOWNLOAD_PATH=./downloads</code></pre>
             <h2 class="text-3xl font-bold text-white mb-10 text-center reveal">Change Log</h2>
             
             <div class="relative border-l-2 border-discord-light/20 ml-3 space-y-12 reveal">
-                <!-- v2.0.0 -->
+                <!-- v3.0.0 -->
                 <div class="relative pl-8">
                     <span class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-green-500 ring-4 ring-discord-dark"></span>
-                    <h3 class="text-xl font-bold text-white mb-2">v2.0.0 <span class="text-sm font-normal text-discord-light ml-2 bg-discord-darker px-2 py-0.5 rounded border border-discord-divider">Latest</span></h3>
+                    <h3 class="text-xl font-bold text-white mb-2">v3.0.0 <span class="text-sm font-normal text-discord-light ml-2 bg-discord-darker px-2 py-0.5 rounded border border-discord-divider">Latest</span></h3>
+                    <p class="text-discord-light text-sm mb-4">New storage workflow with CLI commands, SQLite metadata, and faster sync.</p>
+                    
+                    <div class="bg-discord-bg rounded-lg border border-discord-divider p-6">
+                        <h4 class="text-white font-semibold mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-bolt text-green-400"></i> v3 Highlights
+                        </h4>
+                        <ul class="space-y-3 text-sm text-discord-light">
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-check mt-1 text-xs text-discord-light/50"></i>
+                                <span><strong>CLI Workflow:</strong> Upload, download, list, info, stats, verify, resume.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-check mt-1 text-xs text-discord-light/50"></i>
+                                <span><strong>SQLite Metadata:</strong> WAL mode, indexes, and fast local search.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-check mt-1 text-xs text-discord-light/50"></i>
+                                <span><strong>Discord Layout:</strong> Threaded storage channel + batch index cards.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-check mt-1 text-xs text-discord-light/50"></i>
+                                <span><strong>Sync & Backup:</strong> Rebuild DB from Discord and optional DB backups.</span>
+                            </li>
+                        </ul>
+                        <div class="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-200 text-xs flex items-start gap-2">
+                            <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                            <p><strong>Note:</strong> Keep your encryption key secure. Without it, batches cannot be decrypted.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- v2.0.0 -->
+                <div class="relative pl-8 opacity-90 hover:opacity-100 transition-opacity">
+                    <span class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-discord-light/50 ring-4 ring-discord-dark"></span>
+                    <h3 class="text-xl font-bold text-white mb-2">v2.0.0</h3>
                     <p class="text-discord-light text-sm mb-4">Major security overhaul and architecture improvements.</p>
                     
                     <div class="bg-discord-bg rounded-lg border border-discord-divider p-6">
@@ -452,7 +526,7 @@ DISCORD_DRIVE_DOWNLOAD_PATH=./downloads</code></pre>
                 </div>
 
                 <!-- v1.0.0 -->
-                 <div class="relative pl-8 opacity-60 hover:opacity-100 transition-opacity">
+                <div class="relative pl-8 opacity-60 hover:opacity-100 transition-opacity">
                     <span class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-discord-light/50 ring-4 ring-discord-dark"></span>
                     <h3 class="text-xl font-bold text-white mb-2">v1.0.0</h3>
                     <p class="text-discord-light text-sm">Initial release with basic chunking, upload/download commands, and archive cards.</p>

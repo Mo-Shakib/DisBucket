@@ -1,233 +1,158 @@
 # Discord Object Store
 
-A production-grade, secure object storage system using Discord as a backend. Features AES-256-GCM encryption, Gzip compression, and a modular Python architecture.
+📦 Turn Discord into secure, distributed file storage with compression, encryption, and chunked uploads.  
+🧠 Built for both everyday users and developers who want a reliable, scriptable workflow.
 
-## Features
+## ✨ What It Is
 
-- **🔒 Security**: AES-256-GCM encryption with PBKDF2 key derivation
-- **🗜️ Compression**: Gzip-9 compression for optimal storage efficiency
-- **📦 Chunking**: Intelligent file splitting for Discord's upload limits
-- **🤖 Bot Interface**: Full Discord bot with resume capabilities
-- **📊 Archive Management**: Track, verify, and manage all uploads
-- **🔄 Resumable**: Failed uploads/downloads can be resumed
-- **🏗️ Modular Architecture**: Clean separation of concerns for maintainability
+Discord Object Store lets you archive files and folders as encrypted, chunked batches stored inside a Discord server. A local SQLite database tracks metadata and enables fast search, downloads, and integrity checks.
 
-## Architecture
+## ✅ Use Cases
 
-```
-discord_object_store/
-├── main.py                    # Entry point (bot or CLI)
-├── src/
-│   ├── config.py             # Centralized configuration
-│   ├── common/               # Shared utilities
-│   │   ├── constants.py
-│   │   ├── utils.py
-│   │   ├── logging.py
-│   │   └── types.py          # Data models
-│   ├── core/                 # Core business logic (pure Python)
-│   │   ├── crypto.py         # AES-GCM encryption
-│   │   ├── compression.py    # Gzip compression
-│   │   ├── chunking.py       # File chunking
-│   │   └── manifest.py       # Manifest handling
-│   ├── services/             # Application services
-│   │   ├── file_system.py    # File I/O operations
-│   │   └── archive_manager.py # Slicing/assembly orchestration
-│   └── bot/                  # Discord interface
-│       ├── client.py         # Bot setup
-│       ├── utils.py          # Bot utilities
-│       ├── ui/
-│       │   └── archive_card.py # Discord embeds
-│       └── cogs/             # Command modules
-│           ├── upload.py
-│           ├── download.py
-│           ├── management.py
-│           └── help.py
-```
+- 🗂️ Archive project folders and assets safely in Discord
+- 🧪 Store large datasets without relying on local disk
+- 🤝 Share encrypted batches within a team Discord server
+- 🧰 Keep a searchable, versioned backup workflow
 
-## Installation
+## 🚀 Features
 
-### Prerequisites
+- 🔒 AES-256 (Fernet) encryption with PBKDF2-derived keys
+- 🗜️ `.tar.gz` packaging before encryption for better compression
+- 📦 Automatic chunking at 9.5MB to fit Discord limits
+- 🧵 Threaded storage channel for chunk files
+- 🗃️ Batch index cards for quick lookups
+- 🧠 SQLite metadata store with WAL mode and indexes
+- 🔄 Resume interrupted uploads and verify integrity
+- 💾 Optional Discord-hosted database backups
+- 🧑‍💻 Friendly CLI with progress indicators
 
-- Python 3.9 or higher
-- Discord bot token
-- External drive (optional, paths are configurable)
+## 🧩 Architecture
 
-### Setup
+- **Storage channel** (`STORAGE_CHANNEL_NAME`): threads containing chunk files
+- **Batch index channel** (`BATCH_INDEX_CHANNEL_NAME`): human-readable batch cards
+- **Archive channel** (`ARCHIVE_CHANNEL_NAME`): reserved for future use
+- **Backup channel** (`BACKUP_CHANNEL_NAME`): optional DB backups stored in Discord
+- **SQLite**: local metadata store for batches, chunks, files
+- **Fernet + PBKDF2**: encryption with per-batch salts
 
-1. **Clone the repository**
-   ```bash
-   cd /path/to/discord-object-store
-   ```
+### 📁 Project Structure
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Create .env file**
-   ```bash
-   cp .env.example .env
-   ```
-
-4. **Configure environment variables in `.env`**
-   ```env
-   # Required
-   DISCORD_BOT_TOKEN=your_bot_token_here
-   DISCORD_DRIVE_ARCHIVE_CHANNEL_ID=123456789
-   USER_KEY=your_secure_encryption_key
-   
-   # Optional
-   DISCORD_DRIVE_LOG_CHANNEL_ID=123456789
-   DISCORD_DRIVE_STORAGE_CHANNEL_ID=123456789
-   DISCORD_DRIVE_DATABASE_CHANNEL_ID=123456789
-   DISCORD_DRIVE_UPLOAD_PATH=/custom/upload/path
-   DISCORD_DRIVE_DOWNLOAD_PATH=/custom/download/path
-   DISCORD_DRIVE_LOG_FILE=/custom/log/path/history.json
-   ```
-
-## Usage
-
-### Discord Bot Mode
-
-Start the bot:
-```bash
-python main.py bot
-# or simply
-python main.py
+```text
+.
+├── bot.py              # Main CLI entrypoint
+├── setup.py            # Interactive setup wizard
+├── requirements.txt    # Python dependencies
+├── README.md           # Documentation
+├── .env                # Local config (generated by setup)
+├── data/               # Local metadata + temp files (created at runtime)
+├── uploads/            # Staged chunks (optional)
+└── downloads/          # Restored batches
 ```
 
-#### Bot Commands
-
-- `!upload` — Upload files from the upload folder
-- `!download #DDMMYY-01 [#DDMMYY-02]` — Download archive(s)
-- `!resume [archive_id]` — Resume a failed upload
-- `!status` — Show bot status and stats
-- `!history` — Show recent archives
-- `!archives [query]` — Search archives
-- `!verify <archive_id>` — Verify archive integrity
-- `!help` — Show help message
-
-**Admin Commands:**
-- `!rebuild-log` — Rebuild log from archive channel
-- `!migrate-legacy` — Migrate old logs to new format
-- `!cleanup <archive_id>` — Delete archive and thread
-
-### CLI Slicer Mode
-
-For standalone file slicing/assembly without the bot:
-```bash
-python main.py slice
-```
-
-This provides an interactive menu to:
-1. Slice files into encrypted chunks
-2. Reassemble files from chunks
-
-## Workflow
-
-### Uploading Files
-
-1. Place files in the upload folder (default: `/Volumes/Local Drive/DiscordDrive/Uploads`)
-2. Run the slicer to encrypt and chunk files:
-   ```bash
-   python main.py slice
-   ```
-3. Upload to Discord:
-   ```
-   !upload
-   ```
-
-### Downloading Files
-
-```
-!download #171226-01
-```
-
-Files are automatically reassembled and decrypted after download.
-
-## Security
-
-- **Encryption**: AES-256-GCM (Galois/Counter Mode)
-- **Key Derivation**: PBKDF2-HMAC-SHA256 with 600,000 iterations
-- **Per-Chunk Encryption**: Each chunk has unique salt and nonce
-- **Compression**: Applied before encryption to reduce storage
-
-### Important Security Notes
-
-⚠️ **Keep your USER_KEY secure!** Without it, files cannot be decrypted.
-
-⚠️ **Backup your manifests!** They contain the file structure information.
-
-## Configuration
-
-All configuration is centralized in `src/config.py`. Environment variables are loaded from `.env`:
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DISCORD_BOT_TOKEN` | Yes | Discord bot token |
-| `DISCORD_DRIVE_ARCHIVE_CHANNEL_ID` | Yes | Channel for archive cards |
-| `USER_KEY` | Recommended | Encryption key (files unencrypted if not set) |
-| `DISCORD_DRIVE_LOG_CHANNEL_ID` | No | Channel for log backups |
-| `DISCORD_DRIVE_STORAGE_CHANNEL_ID` | No | Legacy storage channel |
-| `DISCORD_DRIVE_DATABASE_CHANNEL_ID` | No | Database notification channel |
-| `DISCORD_DRIVE_UPLOAD_PATH` | No | Custom upload folder path |
-| `DISCORD_DRIVE_DOWNLOAD_PATH` | No | Custom download folder path |
-
-## Development
-
-### Project Structure
-
-The codebase follows these design principles:
-
-1. **Separation of Concerns**: Core logic is independent of Discord
-2. **Single Responsibility**: Each module has one clear purpose
-3. **Dependency Injection**: Configuration is centralized
-4. **Type Safety**: Data models defined in `common/types.py`
-
-### Running Tests
+## 🛠️ Installation
 
 ```bash
-# Add tests in future
-pytest tests/
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-## Troubleshooting
+## ⚙️ Setup
 
-### Bot won't start
-- Check `DISCORD_BOT_TOKEN` in `.env`
-- Verify bot has proper permissions in Discord
-- Check `DISCORD_DRIVE_ARCHIVE_CHANNEL_ID` is valid
+1. Create a Discord bot in the Developer Portal and invite it to your server.
+2. Run the setup wizard:
+```bash
+python setup.py
+```
+3. Follow prompts to save your token, generate keys, and optionally sync.
 
-### Files aren't encrypted
-- Set `USER_KEY` in `.env` file
-- Restart the bot after adding the key
+> Note: This version has no Discord chat commands. Everything runs via CLI.
 
-### Upload fails
-- Check available disk space
-- Verify upload folder exists and has files
-- Use `!resume` to continue failed uploads
+## 🔧 Configuration
 
-### Download fails
-- Check archive exists with `!archives`
-- Verify channel permissions
-- Re-run `!download` to resume
+Configuration is created and managed by the setup wizard, but advanced users can edit values directly.
 
-## Migration from Old Version
+Common settings:
+- `STORAGE_CHANNEL_NAME`: channel where chunk threads are created
+- `BATCH_INDEX_CHANNEL_NAME`: channel where batch cards are posted
+- `BACKUP_CHANNEL_NAME`: optional DB backup channel
+- `MAX_CHUNK_SIZE`: chunk size (default 9.5MB)
+- `DB_PATH`: local SQLite database path
 
-If you have an existing installation:
+## 🧪 CLI Commands
 
-1. Run `!migrate-legacy` to convert old logs to archive cards
-2. Run `!rebuild-log confirm` to rebuild the log from archive channel
-3. Old files will continue to work with the new system
+```bash
+python bot.py upload <path>              # Upload file/folder
+python bot.py download <batch_id> <path> # Download batch
+python bot.py list                       # List batches
+python bot.py info <batch_id>            # Batch details
+python bot.py delete <batch_id>          # Delete batch (local + optional Discord)
+python bot.py stats                      # Storage statistics
+python bot.py verify <batch_id>          # Verify integrity
+python bot.py resume <batch_id>          # Resume upload
+python bot.py backup                     # Backup DB (optional upload to Discord)
+python bot.py sync --reset               # Rebuild DB from Discord
+```
 
-## License
+## 🔁 Workflow
 
-[Add your license here]
+### ⬆️ Upload (Create a Batch)
+**Goal:** Turn a folder into a secure, searchable batch stored in Discord.
 
-## Contributing
+1. **Scan & summarize**: count files, total size, and build a manifest.
+2. **Describe**: add optional title, tags, and description.
+3. **Package**: build a `.tar.gz` archive for compact storage.
+4. **Encrypt & split**: derive keys (PBKDF2), encrypt with Fernet, split into 9.5MB chunks.
+5. **Store**: create a batch card + storage thread, upload chunks concurrently.
+6. **Index**: write metadata and hashes to SQLite for fast lookups.
 
-Contributions are welcome! Please follow the existing code structure and patterns.
+### ⬇️ Download (Restore a Batch)
+**Goal:** Reconstruct files exactly as they were uploaded.
 
-## Support
+1. **Lookup**: read batch metadata from SQLite.
+2. **Fetch**: download chunks in parallel from the storage thread.
+3. **Verify**: SHA-256 hashes ensure integrity before decrypting.
+4. **Assemble**: merge chunks, decrypt the archive, and extract files.
 
-For issues or questions, please open a GitHub issue.
+### 🔄 Sync (Rebuild Local State)
+**Goal:** Recover metadata if your local DB is missing or stale.
+
+1. **Discover**: read batch cards from the batch index channel.
+2. **Resolve**: follow each thread to enumerate chunk attachments.
+3. **Rebuild**: recreate the SQLite database with batch/chunk metadata.
+
+## 🔐 Security Notes
+
+- Never share your bot token or encryption key
+- Encryption uses AES-256 (Fernet) with HMAC integrity
+- SHA-256 is used to verify chunk integrity
+- `.env` and database files are ignored by Git
+
+## 🧭 Developer Notes
+
+- Configuration values live in the setup wizard and environment config
+- The local DB is the source of truth for metadata
+- Chunk hashes allow integrity verification and resume support
+
+## 🧰 Troubleshooting
+
+- **Invalid token**: Ensure the bot token is correct and has not been regenerated.
+- **No guilds found**: Invite the bot to a server and grant permissions.
+- **Permission errors**: Ensure the bot can manage threads and send files.
+- **Batch not found**: Run `python bot.py sync --reset` to rebuild DB.
+- **Large files**: Ensure `MAX_CHUNK_SIZE` is below Discord upload limits.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please open an issue or PR with a clear description of the change and why it helps.
+
+Suggested flow:
+1. Fork the repo and create a feature branch
+2. Keep changes focused and well-documented
+3. Add or update tests if behavior changes
+4. Open a PR and link any related issues
+
+## 🆘 Support
+
+- Open a GitHub issue for bugs or feature requests
+- Include logs, steps to reproduce, and your environment
