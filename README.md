@@ -1,34 +1,50 @@
-# Discord Storage Bot
+# Discord Object Store
 
-Turn Discord into secure, distributed file storage with compression, encryption, and chunked uploads.
+📦 Turn Discord into secure, distributed file storage with compression, encryption, and chunked uploads.  
+🧠 Built for both everyday users and developers who want a reliable, scriptable workflow.
 
-## Features
-- Compresses, encrypts, and splits files into <10MB chunks (capped at 9.5MB)
-- Stores chunks in a dedicated storage channel using threads
-- Posts searchable batch cards in a batch index channel
-- Downloads and reconstructs files by batch ID
-- SQLite metadata storage with WAL mode and indexes
-- Syncs local database from Discord when needed
-- Optional Discord-hosted database backups
-- Progress indicators for long-running operations
-- Simple, friendly CLI for non-technical users
+## ✨ What It Is
 
-## Architecture
-- **Storage channel** (`STORAGE_CHANNEL_NAME`): contains threads with chunk files
+Discord Object Store lets you archive files and folders as encrypted, chunked batches stored inside a Discord server. A local SQLite database tracks metadata and enables fast search, downloads, and integrity checks.
+
+## ✅ Use Cases
+
+- 🗂️ Archive project folders and assets safely in Discord
+- 🧪 Store large datasets without relying on local disk
+- 🤝 Share encrypted batches within a team Discord server
+- 🧰 Keep a searchable, versioned backup workflow
+
+## 🚀 Features
+
+- 🔒 AES-256 (Fernet) encryption with PBKDF2-derived keys
+- 🗜️ `.tar.gz` packaging before encryption for better compression
+- 📦 Automatic chunking at 9.5MB to fit Discord limits
+- 🧵 Threaded storage channel for chunk files
+- 🗃️ Batch index cards for quick lookups
+- 🧠 SQLite metadata store with WAL mode and indexes
+- 🔄 Resume interrupted uploads and verify integrity
+- 💾 Optional Discord-hosted database backups
+- 🧑‍💻 Friendly CLI with progress indicators
+
+## 🧩 Architecture
+
+- **Storage channel** (`STORAGE_CHANNEL_NAME`): threads containing chunk files
 - **Batch index channel** (`BATCH_INDEX_CHANNEL_NAME`): human-readable batch cards
 - **Archive channel** (`ARCHIVE_CHANNEL_NAME`): reserved for future use
 - **Backup channel** (`BACKUP_CHANNEL_NAME`): optional DB backups stored in Discord
 - **SQLite**: local metadata store for batches, chunks, files
 - **Fernet + PBKDF2**: encryption with per-batch salts
 
-## Installation
+## 🛠️ Installation
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Setup
+## ⚙️ Setup
+
 1. Create a Discord bot in the Developer Portal and invite it to your server.
 2. Run the setup wizard:
 ```bash
@@ -36,7 +52,10 @@ python setup.py
 ```
 3. Follow prompts to save your token, generate keys, and optionally sync.
 
-## Commands
+> Note: This version has no Discord chat commands. Everything runs via CLI.
+
+## 🧪 CLI Commands
+
 ```bash
 python bot.py upload <path>              # Upload file/folder
 python bot.py download <batch_id> <path> # Download batch
@@ -50,44 +69,48 @@ python bot.py backup                     # Backup DB (optional upload to Discord
 python bot.py sync --reset               # Rebuild DB from Discord
 ```
 
-## Use Cases
-- Archive project folders and assets safely in Discord
-- Store large datasets without relying on local disk
-- Share encrypted batches within a team Discord server
+## 🔁 Workflow
 
-## Workflow
-### Upload
-1. Scan files/folders and calculate totals
-2. Collect optional title, tags, description
-3. Create `.tar.gz`, encrypt with Fernet, split into chunks
-4. Post batch card to the batch index channel
-5. Create a storage thread and upload chunk files
-6. Save metadata to SQLite
+### ⬆️ Upload (Create a Batch)
+**Goal:** Turn a folder into a secure, searchable batch stored in Discord.
 
-### Download
-1. Lookup batch metadata in SQLite
-2. Download chunks concurrently
-3. Verify SHA-256 hashes
-4. Merge chunks, decrypt archive, extract files
+1. **Scan & summarize**: count files, total size, and build a manifest.
+2. **Describe**: add optional title, tags, and description.
+3. **Package**: build a `.tar.gz` archive for compact storage.
+4. **Encrypt & split**: derive keys (PBKDF2), encrypt with Fernet, split into 9.5MB chunks.
+5. **Store**: create a batch card + storage thread, upload chunks concurrently.
+6. **Index**: write metadata and hashes to SQLite for fast lookups.
 
-### Sync
-1. Read batch cards from the batch index channel
-2. Use thread ID to fetch chunk attachments
-3. Rebuild SQLite with batch/chunk metadata
+### ⬇️ Download (Restore a Batch)
+**Goal:** Reconstruct files exactly as they were uploaded.
 
-## How It Works
-- Each batch becomes a thread in the storage channel
-- A batch card contains size, file count, tags, and timestamp
-- The local DB stores chunk URLs, hashes, and metadata
-- Encryption uses PBKDF2-derived keys with per-batch salts
+1. **Lookup**: read batch metadata from SQLite.
+2. **Fetch**: download chunks in parallel from the storage thread.
+3. **Verify**: SHA-256 hashes ensure integrity before decrypting.
+4. **Assemble**: merge chunks, decrypt the archive, and extract files.
 
-## Security
+### 🔄 Sync (Rebuild Local State)
+**Goal:** Recover metadata if your local DB is missing or stale.
+
+1. **Discover**: read batch cards from the batch index channel.
+2. **Resolve**: follow each thread to enumerate chunk attachments.
+3. **Rebuild**: recreate the SQLite database with batch/chunk metadata.
+
+## 🔐 Security Notes
+
 - Never share your bot token or encryption key
 - Encryption uses AES-256 (Fernet) with HMAC integrity
-- SHA-256 used to verify chunk integrity
+- SHA-256 is used to verify chunk integrity
 - `.env` and database files are ignored by Git
 
-## Troubleshooting
+## 🧭 Developer Notes
+
+- Configuration values live in the setup wizard and environment config
+- The local DB is the source of truth for metadata
+- Chunk hashes allow integrity verification and resume support
+
+## 🧰 Troubleshooting
+
 - **Invalid token**: Ensure the bot token is correct and has not been regenerated.
 - **No guilds found**: Invite the bot to a server and grant permissions.
 - **Permission errors**: Ensure the bot can manage threads and send files.
