@@ -122,7 +122,7 @@ async def _complete_job(job_id: str, result: Dict[str, Any]) -> None:
         job.status = "complete"
         job.progress = 100
         job.result = result
-        job.finished_at = datetime.utcnow().isoformat() + "Z"
+        job.finished_at = datetime.now().isoformat()
 
 
 async def _fail_job(job_id: str, error: str) -> None:
@@ -130,13 +130,13 @@ async def _fail_job(job_id: str, error: str) -> None:
         job = JOBS[job_id]
         job.status = "failed"
         job.error = error
-        job.finished_at = datetime.utcnow().isoformat() + "Z"
+        job.finished_at = datetime.now().isoformat()
 
 
 def _create_job(job_type: str) -> Job:
     job_id = uuid4().hex
     job = Job(id=job_id, job_type=job_type,
-              started_at=datetime.utcnow().isoformat() + "Z")
+              started_at=datetime.now().isoformat())
     JOBS[job_id] = job
     return job
 
@@ -412,7 +412,7 @@ async def api_backup(payload: BackupRequest) -> Dict[str, str]:
     job = _create_job("backup")
 
     async def _work() -> Dict[str, Any]:
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_path = DEFAULT_DB_PATH.with_name(
             f"storage_backup_{timestamp}.db")
         shutil.copy2(DEFAULT_DB_PATH, backup_path)
