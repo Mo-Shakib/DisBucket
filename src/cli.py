@@ -100,6 +100,7 @@ def parse_arguments() -> argparse.Namespace:
     upload_parser = subparsers.add_parser("upload", help="Upload file/folder")
     upload_parser.add_argument("path", help="Path to file or folder")
     upload_parser.add_argument("--yes", action="store_true", help="Skip confirmation")
+    upload_parser.add_argument("--channel", type=str, help="Specific storage channel to use (default: auto round-robin)")
 
     download_parser = subparsers.add_parser("download", help="Download batch")
     download_parser.add_argument("batch_id", help="Batch ID")
@@ -144,7 +145,37 @@ def command_upload(args: argparse.Namespace) -> None:
     """
     Handle upload command.
     """
-    batch_id = asyncio.run(upload(args.path, confirm=not args.yes))
+    # Show available channels if user wants to choose
+    if hasattr(args, 'channel') and args.channel:
+        channel_name = args.channel
+    else:
+        # Optionally show available channels
+        config = Config.get_instance()
+        available_channels = config.get_storage_channels()
+        
+        if len(available_channels) > 1 and not args.yes:
+            print(f"\n{Fore.CYAN}Available Storage Channels:{Style.RESET_ALL}")
+            print(f"  {'0.':<4} {'Auto (Round-robin)':<30} {Fore.YELLOW}[Default]{Style.RESET_ALL}")
+            for i, channel in enumerate(available_channels, 1):
+                print(f"  {f'{i}.':<4} #{channel}")
+            
+            choice = input(f"\n{Fore.CYAN}Select channel (0-{len(available_channels)}, Enter for auto):{Style.RESET_ALL} ").strip()
+            
+            if choice and choice.isdigit():
+                choice_num = int(choice)
+                if 1 <= choice_num <= len(available_channels):
+                    channel_name = available_channels[choice_num - 1]
+                    print(f"✓ Selected: #{channel_name}")
+                else:
+                    channel_name = None
+                    print(f"✓ Using auto selection (round-robin)")
+            else:
+                channel_name = None
+                print(f"✓ Using auto selection (round-robin)")
+        else:
+            channel_name = None
+    
+    batch_id = asyncio.run(upload(args.path, confirm=not args.yes, channel=channel_name))
     print(f"{Fore.GREEN}✅ Upload complete! Batch ID: {batch_id}{Style.RESET_ALL}")
 
 
@@ -575,6 +606,8 @@ def main() -> None:
             command_delete(args)
         elif args.command == "stats":
             command_stats(args)
+        elif args.command == "channels":
+            command_channels(args)
         elif args.command == "verify":
             command_verify(args)
         elif args.command == "resume":
