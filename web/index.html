@@ -45,6 +45,7 @@
                         'slide-up': 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         'blob': 'blob 10s infinite',
+                        'bounce': 'bounce 1s ease-in-out 3',
                     },
                     keyframes: {
                         fadeIn: {
@@ -120,6 +121,72 @@
         }
         .animation-delay-4000 {
             animation-delay: 4s;
+        }
+
+        /* Font Awesome Animations */
+        .fa-beat {
+            animation: fa-beat 1s ease-in-out infinite;
+        }
+        @keyframes fa-beat {
+            0%, 90% { transform: scale(1); }
+            45% { transform: scale(1.15); }
+        }
+
+        .fa-fade {
+            animation: fa-fade 1s ease-in-out infinite;
+        }
+        @keyframes fa-fade {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .fa-bounce {
+            animation: fa-bounce 1s ease-in-out 3;
+        }
+        @keyframes fa-bounce {
+            0%, 100% { transform: translateY(0); }
+            25% { transform: translateY(-10px); }
+            50% { transform: translateY(0); }
+            75% { transform: translateY(-5px); }
+        }
+
+        .fa-spin {
+            animation: fa-spin 1s linear infinite;
+        }
+        @keyframes fa-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Progress bar animations */
+        .progress-container {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Shimmer effect for progress bar */
+        .progress-container .h-full::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
         }
     </style>
 </head>
@@ -316,10 +383,10 @@
                             <div id="job-progress" class="h-full bg-gradient-to-r from-discord-brand to-purple-500 transition-all duration-300 ease-out shadow-[0_0_10px_rgba(88,101,242,0.5)]" style="width: 0%;"></div>
                         </div>
                         
-                        <pre id="job-logs" class="flex-1 p-6 font-mono text-sm text-discord-light/90 whitespace-pre-wrap overflow-y-auto custom-scrollbar selection:bg-discord-brand selection:text-white leading-relaxed">
-<span class="text-discord-brand">➜</span> System initialized.
-<span class="text-discord-brand">➜</span> Waiting for job dispatch...
-                        </pre>
+                        <div id="job-logs" class="flex-1 p-6 font-mono text-sm text-discord-light/90 overflow-y-auto custom-scrollbar selection:bg-discord-brand selection:text-white leading-relaxed space-y-1">
+<div class="animate-fade-in"><span class="text-discord-brand"><i class="fa-solid fa-circle-check mr-2"></i></span>System initialized.</div>
+<div class="animate-fade-in"><span class="text-discord-brand"><i class="fa-solid fa-clock mr-2 fa-spin"></i></span>Waiting for job dispatch...</div>
+                        </div>
                     </div>
                 </div>
 
@@ -670,12 +737,43 @@
             return `${size.toFixed(unitIndex === 0 ? 0 : 2)} ${units[unitIndex]}`;
         };
 
+        const openFolderInFinder = async (path) => {
+            try {
+                // Try to open the folder using the API
+                const res = await fetch('/api/open-folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: path })
+                });
+                
+                if (res.ok) {
+                    // Show a brief success notification
+                    const notification = document.createElement('div');
+                    notification.className = 'fixed top-20 right-8 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in';
+                    notification.innerHTML = '<i class="fa-solid fa-check-circle mr-2"></i>Folder opened in Finder';
+                    document.body.appendChild(notification);
+                    setTimeout(() => notification.remove(), 2000);
+                } else {
+                    throw new Error('Failed to open folder');
+                }
+            } catch (e) {
+                // Fallback: copy path to clipboard
+                navigator.clipboard.writeText(path).then(() => {
+                    const notification = document.createElement('div');
+                    notification.className = 'fixed top-20 right-8 bg-discord-brand text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in';
+                    notification.innerHTML = '<i class="fa-solid fa-copy mr-2"></i>Path copied to clipboard';
+                    document.body.appendChild(notification);
+                    setTimeout(() => notification.remove(), 2000);
+                });
+            }
+        };
+
         const startJob = (jobId) => {
             activeJobId = jobId;
             jobSummary.textContent = `JOB #${jobId}`;
             jobSummary.className = "text-xs font-mono font-bold text-discord-brand uppercase bg-discord-brand/10 px-3 py-1 rounded-md border border-discord-brand/20";
             
-            jobLogs.textContent = 'Initializing job sequence...\n';
+            jobLogs.innerHTML = '<div class="text-discord-brand animate-fade-in"><i class="fa-solid fa-rocket mr-2"></i>Initializing job sequence...</div>';
             jobProgress.style.width = '0%';
             
             switchView('dashboard');
@@ -683,6 +781,117 @@
             if (jobTimer) clearInterval(jobTimer);
             jobTimer = setInterval(refreshJob, 1000);
             refreshJob();
+        };
+
+        const createProgressBar = (percent, label, jobType = 'upload') => {
+            const container = document.createElement('div');
+            container.className = 'progress-container my-3 animate-fade-in';
+            container.dataset.progressType = 'bar';
+            
+            // Choose icon based on job type
+            let icon = 'fa-spinner fa-spin';
+            let iconColor = 'text-discord-brand';
+            if (label.toLowerCase().includes('upload')) {
+                icon = 'fa-cloud-arrow-up fa-fade';
+                iconColor = 'text-purple-400';
+            } else if (label.toLowerCase().includes('download')) {
+                icon = 'fa-cloud-arrow-down fa-beat';
+                iconColor = 'text-blue-400';
+            } else if (label.toLowerCase().includes('receiv')) {
+                icon = 'fa-inbox';
+                iconColor = 'text-green-400';
+            }
+            
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'flex items-center justify-between text-xs mb-2';
+            labelDiv.innerHTML = `
+                <span class="text-discord-light flex items-center">
+                    <i class="fa-solid ${icon} mr-2 ${iconColor}"></i>
+                    <span>${escapeHtml(label)}</span>
+                </span>
+                <span class="text-discord-brand font-bold tabular-nums">${percent}%</span>
+            `;
+            
+            const barBg = document.createElement('div');
+            barBg.className = 'w-full h-2.5 bg-discord-element rounded-full overflow-hidden border border-discord-divider/50 shadow-inner';
+            
+            const barFill = document.createElement('div');
+            barFill.className = 'h-full bg-gradient-to-r from-discord-brand via-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out relative';
+            barFill.style.width = `${percent}%`;
+            barFill.style.boxShadow = '0 0 10px rgba(88, 101, 242, 0.6)';
+            
+            barBg.appendChild(barFill);
+            container.appendChild(labelDiv);
+            container.appendChild(barBg);
+            
+            return container;
+        };
+
+        const formatLogLine = (line) => {
+            // Check if this is a progress line
+            if (line.startsWith('PROGRESS:')) {
+                return null; // Will be handled separately
+            }
+            
+            // Add icons to common log patterns
+            line = line.replace(/^Receiving upload\.\.\./, '<span class="text-blue-400"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Receiving upload...</span>');
+            line = line.replace(/^Saved (\d+) file\(s\)\./, '<span class="text-green-400"><i class="fa-solid fa-check-circle mr-2"></i>Saved $1 file(s).</span>');
+            line = line.replace(/^Starting Discord upload\.\.\./, '<span class="text-discord-brand"><i class="fa-solid fa-rocket mr-2 fa-fade"></i>Starting Discord upload...</span>');
+            line = line.replace(/^Upload complete\./, '<span class="text-green-400"><i class="fa-solid fa-circle-check mr-2"></i>Upload complete.</span>');
+            line = line.replace(/^Restoring batch to (.+)\.\.\./, '<span class="text-blue-400"><i class="fa-solid fa-download mr-2 fa-beat"></i>Restoring batch to $1...</span>');
+            line = line.replace(/Batch ID: ([A-Z0-9_]+)/, 'Batch ID: <span class="text-discord-brand font-bold">$1</span>');
+            
+            return line;
+        };
+
+        const createInteractiveResult = (result, jobType) => {
+            const container = document.createElement('div');
+            container.className = 'mt-2 mb-2';
+            
+            const header = document.createElement('div');
+            header.className = 'text-green-400 font-bold mb-2';
+            header.innerHTML = '<i class="fa-solid fa-circle-check mr-2 fa-bounce"></i>SUCCESS RESULT:';
+            container.appendChild(header);
+            
+            const resultBox = document.createElement('div');
+            resultBox.className = 'bg-discord-sidebar border border-green-500/30 rounded-lg p-3 space-y-2 animate-fade-in';
+            
+            if (jobType === 'download' && result.restored_path) {
+                // Make download path clickable
+                const pathItem = document.createElement('div');
+                pathItem.className = 'flex items-start gap-2';
+                pathItem.innerHTML = `
+                    <span class="text-discord-light text-sm">restored_path:</span>
+                    <button class="text-discord-brand hover:text-blue-300 underline text-sm font-mono break-all text-left transition-colors group flex items-center gap-1" onclick="openFolderInFinder('${escapeHtml(result.restored_path)}')">
+                        <i class="fa-solid fa-folder-open mr-1 group-hover:scale-110 transition-transform"></i>
+                        "${escapeHtml(result.restored_path)}"
+                        <i class="fa-solid fa-arrow-up-right-from-square ml-1 text-xs opacity-50 group-hover:opacity-100"></i>
+                    </button>
+                `;
+                resultBox.appendChild(pathItem);
+            } else {
+                // Display all result fields with icons
+                Object.entries(result).forEach(([key, value]) => {
+                    const item = document.createElement('div');
+                    item.className = 'flex items-start gap-2';
+                    
+                    let icon = 'fa-circle-info';
+                    if (key.includes('id')) icon = 'fa-fingerprint';
+                    if (key.includes('path')) icon = 'fa-folder';
+                    if (key.includes('batch')) icon = 'fa-layer-group';
+                    
+                    const displayValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
+                    item.innerHTML = `
+                        <i class="fa-solid ${icon} text-discord-brand text-xs mt-1"></i>
+                        <span class="text-discord-light text-sm">${escapeHtml(key)}:</span>
+                        <span class="text-white text-sm font-mono break-all">"${escapeHtml(String(displayValue))}"</span>
+                    `;
+                    resultBox.appendChild(item);
+                });
+            }
+            
+            container.appendChild(resultBox);
+            return container;
         };
 
         const refreshJob = async () => {
@@ -697,26 +906,87 @@
                 const data = await res.json();
                 
                 let statusColor = 'text-discord-light';
-                if(data.status === 'complete') statusColor = 'text-green-400';
-                if(data.status === 'failed') statusColor = 'text-red-400';
-                if(data.status === 'running') statusColor = 'text-discord-brand';
+                let statusIcon = 'fa-circle';
+                if(data.status === 'complete') {
+                    statusColor = 'text-green-400';
+                    statusIcon = 'fa-circle-check';
+                }
+                if(data.status === 'failed') {
+                    statusColor = 'text-red-400';
+                    statusIcon = 'fa-circle-xmark';
+                }
+                if(data.status === 'running') {
+                    statusColor = 'text-discord-brand';
+                    statusIcon = 'fa-circle-notch fa-spin';
+                }
 
-                jobSummary.innerHTML = `<span class="${statusColor}"><i class="fa-solid fa-circle text-[8px] mr-2"></i>${data.type.toUpperCase()} • ${data.status.toUpperCase()}</span>`;
+                jobSummary.innerHTML = `<span class="${statusColor}"><i class="fa-solid ${statusIcon} mr-2"></i>${data.type.toUpperCase()} • ${data.status.toUpperCase()}</span>`;
                 
+                // Clear and rebuild logs container
+                jobLogs.innerHTML = '';
+                
+                let lastProgressBar = null;
+                let latestProgressInfo = null;
+                
+                // Process logs and extract progress info
                 const logs = (data.logs || []).slice();
-                if (data.error) {
-                    logs.push(`❌ CRITICAL ERROR: ${data.error}`);
-                }
-                if (data.result) {
-                    logs.push(`✅ SUCCESS RESULT: ${JSON.stringify(data.result, null, 2)}`);
+                const nonProgressLogs = [];
+                
+                logs.forEach((log, index) => {
+                    if (log.startsWith('PROGRESS:')) {
+                        // Parse progress: PROGRESS:percent:message
+                        const parts = log.split(':');
+                        if (parts.length >= 3) {
+                            latestProgressInfo = {
+                                percent: parseInt(parts[1]),
+                                message: parts.slice(2).join(':')
+                            };
+                        }
+                    } else {
+                        nonProgressLogs.push(log);
+                    }
+                });
+                
+                // Render non-progress logs
+                nonProgressLogs.forEach(log => {
+                    const formatted = formatLogLine(escapeHtml(log));
+                    if (formatted) {
+                        const logLine = document.createElement('div');
+                        logLine.className = 'mb-1 animate-fade-in';
+                        logLine.innerHTML = formatted;
+                        jobLogs.appendChild(logLine);
+                    }
+                });
+                
+                // Add or update progress bar if we have progress info
+                if (latestProgressInfo && data.status === 'running') {
+                    lastProgressBar = createProgressBar(latestProgressInfo.percent, latestProgressInfo.message, data.type);
+                    jobLogs.appendChild(lastProgressBar);
                 }
                 
-                jobLogs.textContent = logs.join('\n');
+                // Add error with animation
+                if (data.error) {
+                    const errorLine = document.createElement('div');
+                    errorLine.className = 'text-red-400 font-bold mt-2 animate-fade-in';
+                    errorLine.innerHTML = `<i class="fa-solid fa-circle-xmark mr-2 fa-beat"></i>CRITICAL ERROR: ${escapeHtml(data.error)}`;
+                    jobLogs.appendChild(errorLine);
+                }
+                
+                // Add interactive result
+                if (data.result) {
+                    const resultElement = createInteractiveResult(data.result, data.type);
+                    jobLogs.appendChild(resultElement);
+                }
+                
                 jobProgress.style.width = `${data.progress || 0}%`;
                 jobLogs.scrollTop = jobLogs.scrollHeight;
                 
                 if (data.status === 'complete' || data.status === 'failed') {
                     clearInterval(jobTimer);
+                    // Remove progress bar on completion
+                    const progressBars = jobLogs.querySelectorAll('[data-progress-type="bar"]');
+                    progressBars.forEach(bar => bar.remove());
+                    
                     if(data.status === 'complete') {
                         loadStats();
                         loadBatches();
