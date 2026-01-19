@@ -294,6 +294,7 @@ async def api_upload(
     description: str = Form(""),
     confirm: bool = Form(False),
     root_name: str = Form(""),
+    channel: str = Form(""),
 ) -> Dict[str, str]:
     job = _create_job("upload")
     meta = {"title": title, "tags": tags, "description": description}
@@ -338,7 +339,8 @@ async def api_upload(
         await _log(job.id, "Starting Discord upload...")
         async with DISCORD_LOCK:
             source_path = _derive_source_path()
-            batch_id = await upload(str(source_path), confirm=confirm, metadata=meta)
+            channel_name = channel.strip() if channel else None
+            batch_id = await upload(str(source_path), confirm=confirm, metadata=meta, channel=channel_name)
         await _log(job.id, f"Upload complete. Batch ID: {batch_id}")
         shutil.rmtree(upload_root, ignore_errors=True)
         return {"batch_id": batch_id}
