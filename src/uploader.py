@@ -172,7 +172,7 @@ async def _prepare_chunks(
 
 
 async def upload(
-    path: str, confirm: bool = True, metadata: Optional[Dict[str, str]] = None
+    path: str, confirm: bool = True, metadata: Optional[Dict[str, str]] = None, channel: Optional[str] = None
 ) -> str:
     """
     Upload a file or folder to Discord storage.
@@ -180,6 +180,8 @@ async def upload(
     Args:
         path: Path to file or folder.
         confirm: Require confirmation before upload.
+        metadata: Optional metadata (title, tags, description).
+        channel: Optional specific channel name to use (None = auto round-robin).
 
     Returns:
         Batch ID.
@@ -221,8 +223,18 @@ async def upload(
                 )
                 
                 # Select storage channel for this batch
-                storage_channel = select_storage_channel(guild, storage_channel_names, batch_id)
-                print(f"✓ Using storage channel: #{storage_channel.name}")
+                if channel:
+                    # Manual channel selection
+                    storage_channel = discord.utils.get(guild.text_channels, name=channel)
+                    if storage_channel is None:
+                        # Create if doesn't exist
+                        storage_channel = await guild.create_text_channel(channel)
+                        logger.info(f"Created new storage channel: #{channel}")
+                    print(f"✓ Using storage channel: #{storage_channel.name} (manual selection)")
+                else:
+                    # Auto round-robin selection
+                    storage_channel = select_storage_channel(guild, storage_channel_names, batch_id)
+                    print(f"✓ Using storage channel: #{storage_channel.name} (auto round-robin)")
                 
                 storage_message = await storage_channel.send(f"📦 Batch `{batch_id}` chunks")
                 thread = await create_thread(storage_message, f"Batch {batch_id}")
