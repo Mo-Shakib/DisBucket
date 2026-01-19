@@ -1079,9 +1079,10 @@
                 const title = escapeHtml(batch.title || '—');
                 const tags = escapeHtml(batch.tags || '—');
                 const description = escapeHtml(batch.description || '—');
+                const channel = batch.storage_channel_name ? `<i class="fa-solid fa-hashtag mr-1"></i>${escapeHtml(batch.storage_channel_name)}` : '—';
                 detailsRow.innerHTML = `
                     <td colspan="6" class="px-6 py-4">
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 text-sm">
+                        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 text-sm">
                             <div class="bg-discord-element/40 border border-discord-divider/60 rounded-xl p-4">
                                 <div class="text-xs text-discord-light uppercase tracking-wider font-bold mb-2">Title</div>
                                 <div class="text-white font-semibold break-words">${title}</div>
@@ -1089,6 +1090,10 @@
                             <div class="bg-discord-element/40 border border-discord-divider/60 rounded-xl p-4">
                                 <div class="text-xs text-discord-light uppercase tracking-wider font-bold mb-2">Tags</div>
                                 <div class="text-discord-light break-words">${tags}</div>
+                            </div>
+                            <div class="bg-discord-element/40 border border-discord-divider/60 rounded-xl p-4">
+                                <div class="text-xs text-discord-light uppercase tracking-wider font-bold mb-2">Storage Channel</div>
+                                <div class="text-discord-brand break-words">${channel}</div>
                             </div>
                             <div class="bg-discord-element/40 border border-discord-divider/60 rounded-xl p-4">
                                 <div class="text-xs text-discord-light uppercase tracking-wider font-bold mb-2">Description</div>
@@ -1112,6 +1117,7 @@
                 const title = escapeHtml(batch.title || '—');
                 const tags = escapeHtml(batch.tags || '—');
                 const description = escapeHtml(batch.description || '—');
+                const channel = batch.storage_channel_name ? `<i class="fa-solid fa-hashtag mr-1"></i>${escapeHtml(batch.storage_channel_name)}` : '—';
                 const statusBadge = getStatusBadge(batch.status);
 
                 card.innerHTML = `
@@ -1145,6 +1151,10 @@
                         <div>
                             <div class="uppercase tracking-wider text-[10px] text-discord-light/70">Tags</div>
                             <div class="text-discord-light break-words">${tags}</div>
+                        </div>
+                        <div>
+                            <div class="uppercase tracking-wider text-[10px] text-discord-light/70">Storage Channel</div>
+                            <div class="text-discord-brand break-words">${channel}</div>
                         </div>
                         <div>
                             <div class="uppercase tracking-wider text-[10px] text-discord-light/70">Description</div>

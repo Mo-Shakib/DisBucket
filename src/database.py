@@ -336,7 +336,7 @@ def list_batches(db_path: Optional[Path] = None) -> List[Dict[str, Any]]:
     query = """
     SELECT batch_id, original_name, title, tags, description,
            total_size, compressed_size, chunk_count, file_count,
-           upload_date, status
+           upload_date, status, storage_channel_id, storage_channel_name
     FROM batches
     ORDER BY upload_date DESC
     """
