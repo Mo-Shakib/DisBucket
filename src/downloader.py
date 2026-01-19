@@ -8,7 +8,7 @@ import hmac
 import logging
 import shutil
 from pathlib import Path
-from typing import Dict, List
+from typing import Callable, Dict, List, Optional
 
 import aiofiles
 from tqdm import tqdm
@@ -82,13 +82,14 @@ async def verify_chunks_parallel(chunk_paths: List[Path], hashes: List[str]) -> 
     ])
 
 
-async def download(batch_id: str, output_path: str) -> Path:
+async def download(batch_id: str, output_path: str, progress_callback: Optional[callable] = None) -> Path:
     """
     Download and restore a batch.
 
     Args:
         batch_id: Batch identifier.
         output_path: Destination directory.
+        progress_callback: Optional callback(done, total) for download progress.
 
     Returns:
         Path to restored data.
@@ -129,6 +130,9 @@ async def download(batch_id: str, output_path: str) -> Path:
         progress.n = done
         progress.total = total
         progress.refresh()
+        # Call API progress callback if provided
+        if progress_callback:
+            progress_callback(done, total)
 
     try:
         chunk_paths = await download_chunks_concurrent(

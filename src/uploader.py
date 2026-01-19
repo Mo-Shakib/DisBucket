@@ -172,7 +172,11 @@ async def _prepare_chunks(
 
 
 async def upload(
-    path: str, confirm: bool = True, metadata: Optional[Dict[str, str]] = None, channel: Optional[str] = None
+    path: str, 
+    confirm: bool = True, 
+    metadata: Optional[Dict[str, str]] = None, 
+    channel: Optional[str] = None,
+    progress_callback: Optional[callable] = None
 ) -> str:
     """
     Upload a file or folder to Discord storage.
@@ -182,6 +186,7 @@ async def upload(
         confirm: Require confirmation before upload.
         metadata: Optional metadata (title, tags, description).
         channel: Optional specific channel name to use (None = auto round-robin).
+        progress_callback: Optional callback(done, total) for upload progress.
 
     Returns:
         Batch ID.
@@ -294,6 +299,9 @@ async def upload(
                     progress.n = done
                     progress.total = total
                     progress.refresh()
+                    # Call API progress callback if provided
+                    if progress_callback:
+                        progress_callback(done, total)
 
                 chunk_metadata = await upload_chunks_concurrent(
                     thread,
