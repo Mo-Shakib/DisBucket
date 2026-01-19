@@ -1,4 +1,5 @@
-# Discord Object Store
+# DisBucket - Unlimited Storage on
+Discord Channels
 
 **Turn Discord into a secure, distributed file storage system.**
 
