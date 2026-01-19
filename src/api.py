@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import shutil
+import tempfile
 from dataclasses import dataclass, field
+import atexit
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -38,7 +40,9 @@ from .utils import StorageBotError
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 WEB_DIR = BASE_DIR / "web"
-TEMP_UPLOADS_DIR = BASE_DIR / "temp_uploads"
+DISBUCKET_HOME = Path.home() / "DisBucket"
+TEMP_UPLOADS_DIR = DISBUCKET_HOME / "Uploads"
+TEMP_DOWNLOADS_DIR = DISBUCKET_HOME / "Downloads"
 
 
 @dataclass
@@ -131,7 +135,8 @@ async def _fail_job(job_id: str, error: str) -> None:
 
 def _create_job(job_type: str) -> Job:
     job_id = uuid4().hex
-    job = Job(id=job_id, job_type=job_type, started_at=datetime.utcnow().isoformat() + "Z")
+    job = Job(id=job_id, job_type=job_type,
+              started_at=datetime.utcnow().isoformat() + "Z")
     JOBS[job_id] = job
     return job
 
@@ -164,9 +169,11 @@ async def _delete_from_discord(batch_id: str) -> None:
             index_channel = discord.utils.get(
                 guild.text_channels, name=config.batch_index_channel_name
             )
-            thread_id = int(batch["thread_id"]) if batch.get("thread_id") else None
+            thread_id = int(batch["thread_id"]) if batch.get(
+                "thread_id") else None
             message_id = (
-                int(batch["archive_message_id"]) if batch.get("archive_message_id") else None
+                int(batch["archive_message_id"]) if batch.get(
+                    "archive_message_id") else None
             )
 
             if thread_id:
@@ -226,6 +233,22 @@ async def _verify_batch(batch_id: str) -> None:
 async def _startup() -> None:
     init_database()
     TEMP_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    TEMP_DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"Temp uploads dir: {TEMP_UPLOADS_DIR}")
+    print(f"Temp downloads dir: {TEMP_DOWNLOADS_DIR}")
+
+
+def _cleanup_temp_uploads() -> None:
+    if TEMP_UPLOADS_DIR.exists():
+        shutil.rmtree(TEMP_UPLOADS_DIR, ignore_errors=True)
+
+
+@app.on_event("shutdown")
+async def _shutdown() -> None:
+    _cleanup_temp_uploads()
+
+
+atexit.register(_cleanup_temp_uploads)
 
 
 @app.get("/")
@@ -276,11 +299,13 @@ async def api_upload(
     upload_root = TEMP_UPLOADS_DIR / job.id
     upload_root.mkdir(parents=True, exist_ok=True)
     uploaded_paths: List[Path] = []
+    top_level_names: List[str] = []
 
     try:
         await _log(job.id, "Receiving upload...")
         for upload_file in files:
             relative_name = upload_file.filename.replace("\\", "/")
+            top_level_names.append(relative_name.split("/", 1)[0])
             target_path = upload_root / relative_name
             target_path.parent.mkdir(parents=True, exist_ok=True)
             async with aiofiles.open(target_path, "wb") as outfile:
@@ -296,10 +321,19 @@ async def api_upload(
         await _fail_job(job.id, f"Failed to save upload: {exc}")
         return {"job_id": job.id}
 
+    def _derive_source_path() -> Path:
+        if len(uploaded_paths) == 1:
+            return uploaded_paths[0]
+        if top_level_names and len(set(top_level_names)) == 1:
+            candidate = upload_root / top_level_names[0]
+            if candidate.exists():
+                return candidate
+        return upload_root
+
     async def _work() -> Dict[str, Any]:
         await _log(job.id, "Starting Discord upload...")
         async with DISCORD_LOCK:
-            source_path = uploaded_paths[0] if len(uploaded_paths) == 1 else upload_root
+            source_path = _derive_source_path()
             batch_id = await upload(str(source_path), confirm=confirm, metadata=meta)
         await _log(job.id, f"Upload complete. Batch ID: {batch_id}")
         shutil.rmtree(upload_root, ignore_errors=True)
@@ -312,7 +346,7 @@ async def api_upload(
 @app.post("/api/jobs/download")
 async def api_download(payload: DownloadRequest) -> Dict[str, str]:
     job = _create_job("download")
-    destination = payload.destination_path or str(BASE_DIR / "downloads")
+    destination = payload.destination_path or str(TEMP_DOWNLOADS_DIR)
 
     async def _work() -> Dict[str, Any]:
         await _log(job.id, f"Restoring batch to {destination}...")
@@ -375,7 +409,8 @@ async def api_backup(payload: BackupRequest) -> Dict[str, str]:
 
     async def _work() -> Dict[str, Any]:
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        backup_path = DEFAULT_DB_PATH.with_name(f"storage_backup_{timestamp}.db")
+        backup_path = DEFAULT_DB_PATH.with_name(
+            f"storage_backup_{timestamp}.db")
         shutil.copy2(DEFAULT_DB_PATH, backup_path)
         await _log(job.id, f"Backup created at {backup_path}")
         if payload.upload_to_discord:
