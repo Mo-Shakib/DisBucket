@@ -25,7 +25,7 @@
                             element: '#1e1f22',
                             hover: '#3f4147',
                             active: '#35373c',
-                            light: '#b5bac1',
+                            light: '#c4c9ce',
                             white: '#f2f3f5',
                             divider: '#1f2023',
                             brand: '#5865F2',
@@ -185,6 +185,109 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+        
+        /* Improved accessibility - better focus states */
+        *:focus-visible {
+            outline: 2px solid #5865F2;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+        
+        /* Validation states */
+        .input-error {
+            border-color: #da373c !important;
+            box-shadow: 0 0 0 2px rgba(218, 55, 60, 0.2) !important;
+        }
+        
+        .input-success {
+            border-color: #23a559 !important;
+        }
+        
+        .error-message {
+            color: #da373c;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            animation: shake 0.3s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        
+        /* Theme toggle animation */
+        .theme-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+        
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .theme-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #2b2d31;
+            transition: 0.4s;
+            border-radius: 30px;
+            border: 1px solid #3f4147;
+        }
+        
+        .theme-slider:before {
+            position: absolute;
+            content: "🌙";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 3px;
+            background-color: #5865F2;
+            transition: 0.4s;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        input:checked + .theme-slider:before {
+            transform: translateX(30px);
+            content: "☀️";
+        }
+        
+        /* Sort indicator */
+        .sort-indicator {
+            display: inline-block;
+            margin-left: 4px;
+            opacity: 0.5;
+            transition: all 0.2s;
+        }
+        
+        .sort-indicator.active {
+            opacity: 1;
+        }
+        
+        /* Scroll to top button */
+        #scroll-top-btn {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+        
+        #scroll-top-btn.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
 
         .animation-delay-2000 {
             animation-delay: 2s;
@@ -288,6 +391,14 @@
 </head>
 <body class="bg-discord-bg text-discord-white font-sans h-screen flex overflow-hidden selection:bg-discord-brand selection:text-white">
     
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-discord-bg z-[100] flex items-center justify-center" style="display: none;">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-discord-brand border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-discord-light text-sm font-medium">Loading data...</p>
+        </div>
+    </div>
+    
     <!-- Mobile overlay -->
     <div class="mobile-overlay" id="mobile-overlay" onclick="toggleMobileSidebar()"></div>
 
@@ -345,7 +456,7 @@
                 </div>
                 <div class="flex-1 overflow-hidden">
                     <div class="text-sm font-bold text-white truncate">DisBucket Server</div>
-                    <div class="text-[11px] text-discord-light font-mono truncate">Web UI: <span class="text-green-400">Connected</span></div>
+                    <div class="text-[11px] text-discord-light font-mono truncate">Web UI: <span id="connection-status" class="text-green-400">Connected</span></div>
                 </div>
             </div>
         </div>
@@ -353,27 +464,27 @@
 
     <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-discord-bg">
         <!-- Animated Gradient Blobs -->
-        <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-30">
-            <div class="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] bg-discord-brand/30 rounded-full blur-[120px] animate-blob"></div>
-            <div class="absolute bottom-[5%] right-[-5%] w-[450px] h-[450px] bg-purple-600/25 rounded-full blur-[100px] animate-blob animation-delay-2000"></div>
+        <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-30" style="will-change: transform;">
+            <div class="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] bg-discord-brand/30 rounded-full blur-[80px] animate-blob" style="will-change: transform;"></div>
+            <div class="absolute bottom-[5%] right-[-5%] w-[450px] h-[450px] bg-purple-600/25 rounded-full blur-[80px] animate-blob animation-delay-2000" style="will-change: transform;"></div>
         </div>
 
-        <header class="h-20 bg-discord-bg/95 backdrop-blur-sm border-b border-discord-divider flex items-center justify-between px-4 lg:px-8 shrink-0 z-20 sticky top-0">
-            <div class="flex items-center gap-4 flex-1 min-w-0">
-                <button id="mobile-menu-btn" class="lg:hidden w-10 h-10 rounded-lg bg-discord-element hover:bg-discord-hover text-discord-light hover:text-white border border-discord-divider transition-all flex items-center justify-center" aria-label="Toggle menu" aria-expanded="false">
+        <header class="h-16 lg:h-20 bg-discord-bg/95 backdrop-blur-sm border-b border-discord-divider flex items-center justify-between px-4 lg:px-8 shrink-0 z-20 sticky top-0">
+            <div class="flex items-center gap-3 lg:gap-4 flex-1 min-w-0">
+                <button id="mobile-menu-btn" class="lg:hidden w-11 h-11 rounded-lg bg-discord-element hover:bg-discord-hover text-discord-light hover:text-white border border-discord-divider transition-all flex items-center justify-center" aria-label="Toggle menu" aria-expanded="false">
                     <i class="fa-solid fa-bars"></i>
                 </button>
                 <div class="flex flex-col justify-center min-w-0">
-                     <h2 id="page-title" class="text-lg lg:text-xl font-bold text-white tracking-tight">Dashboard</h2>
-                     <div class="hidden sm:flex items-center text-xs text-discord-light mt-1 font-mono">
+                     <h2 id="page-title" class="text-base lg:text-xl font-bold text-white tracking-tight">Dashboard</h2>
+                     <div class="hidden sm:flex items-center text-xs text-discord-light mt-0.5 font-mono">
                         <i class="fa-solid fa-clock mr-2 opacity-60" aria-hidden="true"></i>
                         <span>Last updated: <span id="last-updated">just now</span></span>
                      </div>
                 </div>
             </div>
             
-            <div class="flex items-center gap-2 lg:gap-4">
-                <div class="relative group">
+            <div class="flex items-center gap-2 lg:gap-3">
+                <div class="relative group hidden md:block">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-discord-light group-focus-within:text-discord-brand transition-colors pointer-events-none" aria-hidden="true"></i>
                     <input id="global-search" type="text" placeholder="Search... (/)" class="bg-discord-element border border-discord-divider rounded-full py-2 pl-10 pr-10 text-sm w-40 lg:w-64 text-white focus:w-48 lg:focus:w-72 transition-all shadow-sm" aria-label="Global search">
                     <button id="clear-search-btn" class="clear-search absolute right-3 top-1/2 transform -translate-y-1/2 text-discord-light hover:text-white transition-colors" aria-label="Clear search">
@@ -381,7 +492,7 @@
                     </button>
                 </div>
                 <div class="relative group hidden lg:block">
-                    <button class="w-10 h-10 rounded-full bg-discord-element hover:bg-discord-hover text-discord-light hover:text-white border border-discord-divider transition-all flex items-center justify-center shadow-sm" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">
+                    <button class="w-11 h-11 rounded-full bg-discord-element hover:bg-discord-hover text-discord-light hover:text-white border border-discord-divider transition-all flex items-center justify-center shadow-sm" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">
                         <i class="fa-solid fa-keyboard text-sm" aria-hidden="true"></i>
                     </button>
                     <div class="absolute right-0 top-12 bg-discord-sidebar border border-discord-divider rounded-xl p-4 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all w-64 z-50">
@@ -396,7 +507,7 @@
                         </div>
                     </div>
                 </div>
-                <button id="refresh-btn" class="w-10 h-10 rounded-full bg-discord-element hover:bg-discord-brand text-discord-light hover:text-white border border-discord-divider hover:border-discord-brand transition-all flex items-center justify-center shadow-sm" title="Refresh Data (R)" aria-label="Refresh data">
+                <button id="refresh-btn" class="w-11 h-11 rounded-full bg-discord-element hover:bg-discord-brand text-discord-light hover:text-white border border-discord-divider hover:border-discord-brand transition-all flex items-center justify-center shadow-sm" title="Refresh Data (R)" aria-label="Refresh data">
                     <i class="fa-solid fa-rotate" aria-hidden="true"></i>
                 </button>
             </div>
@@ -406,7 +517,7 @@
             
             <section id="dashboard" class="view-section active animate-fade-in space-y-8" role="region" aria-label="Dashboard overview">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="bg-discord-sidebar rounded-2xl p-6 border border-discord-divider hover:border-purple-500/30 relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] transition-all duration-300">
+                    <div class="bg-discord-sidebar rounded-2xl p-6 border border-discord-divider hover:border-purple-500/30 relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] transition-all duration-300 animate-slide-up" style="animation-delay: 0.05s;">
                         <div class="absolute top-0 left-0 w-1 h-full bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
                         <div class="absolute -right-6 -bottom-6 text-9xl text-discord-element opacity-10 group-hover:opacity-15 group-hover:scale-110 transition-all" aria-hidden="true">
                             <i class="fa-solid fa-layer-group"></i>
@@ -425,7 +536,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-discord-sidebar rounded-2xl p-6 border border-discord-divider hover:border-green-500/30 relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(34,197,94,0.15)] transition-all duration-300">
+                    <div class="bg-discord-sidebar rounded-2xl p-6 border border-discord-divider hover:border-green-500/30 relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(34,197,94,0.15)] transition-all duration-300 animate-slide-up" style="animation-delay: 0.1s;">
                         <div class="absolute top-0 left-0 w-1 h-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
                         <div class="absolute -right-6 -bottom-6 text-9xl text-discord-element opacity-10 group-hover:opacity-15 group-hover:scale-110 transition-all" aria-hidden="true">
                             <i class="fa-solid fa-hard-drive"></i>
@@ -444,7 +555,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-discord-sidebar rounded-2xl p-6 border border-discord-divider hover:border-blue-500/30 relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-all duration-300">
+                    <div class="bg-discord-sidebar rounded-2xl p-6 border border-discord-divider hover:border-blue-500/30 relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-all duration-300 animate-slide-up" style="animation-delay: 0.15s;">
                         <div class="absolute top-0 left-0 w-1 h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
                         <div class="absolute -right-6 -bottom-6 text-9xl text-discord-element opacity-10 group-hover:opacity-15 group-hover:scale-110 transition-all" aria-hidden="true">
                             <i class="fa-regular fa-file-zipper"></i>
@@ -463,7 +574,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-discord-sidebar rounded-2xl p-6 border border-discord-divider hover:border-yellow-500/30 relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(234,179,8,0.15)] transition-all duration-300">
+                    <div class="bg-discord-sidebar rounded-2xl p-6 border border-discord-divider hover:border-yellow-500/30 relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(234,179,8,0.15)] transition-all duration-300 animate-slide-up" style="animation-delay: 0.2s;">
                         <div class="absolute top-0 left-0 w-1 h-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]"></div>
                         <div class="absolute -right-6 -bottom-6 text-9xl text-discord-element opacity-10 group-hover:opacity-15 group-hover:scale-110 transition-all" aria-hidden="true">
                             <i class="fa-solid fa-puzzle-piece"></i>
@@ -492,8 +603,13 @@
                                     <span class="hidden sm:inline">bot.py — </span>active job
                                 </span>
                             </div>
-                            <div id="job-summary" class="text-xs font-mono font-bold text-discord-light uppercase bg-discord-bg px-3 py-1 rounded-md border border-discord-divider" role="status">
-                                IDLE
+                            <div class="flex items-center gap-2">
+                                <button id="copy-logs-btn" class="text-xs text-discord-light hover:text-white transition-colors px-2 py-1 rounded hover:bg-discord-hover" title="Copy logs to clipboard" aria-label="Copy logs">
+                                    <i class="fa-solid fa-copy" aria-hidden="true"></i>
+                                </button>
+                                <div id="job-summary" class="text-xs font-mono font-bold text-discord-light uppercase bg-discord-bg px-3 py-1 rounded-md border border-discord-divider" role="status">
+                                    IDLE
+                                </div>
                             </div>
                         </div>
 
@@ -552,8 +668,15 @@
                                     </div>
                                     <h3 class="text-white font-bold text-lg mb-1">Click to browse or drag file here</h3>
                                     <p class="text-discord-light text-sm max-w-xs mx-auto">Supports individual files or directory structures (when folder mode is active).</p>
+                                    <p class="text-discord-light/60 text-xs mt-2">Recommended max size: 25MB per file</p>
                                     <div id="file-name-display" class="mt-4 px-4 py-2 bg-discord-brand rounded-full text-xs font-bold text-white hidden animate-fade-in">
                                         <i class="fa-solid fa-file mr-2" aria-hidden="true"></i> <span id="selected-filename">filename.zip</span>
+                                    </div>
+                                    <div id="file-size-display" class="mt-2 text-xs text-discord-light hidden">
+                                        <i class="fa-solid fa-hard-drive mr-1" aria-hidden="true"></i> <span id="selected-filesize">0 MB</span>
+                                    </div>
+                                    <div id="file-error-display" class="mt-2 text-xs text-red-400 hidden animate-fade-in">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1" aria-hidden="true"></i> <span id="file-error-message"></span>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-3 mt-2 pl-1 p-3 bg-discord-element/30 rounded-lg border border-discord-divider/50">
@@ -581,10 +704,13 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label for="upload-title" class="text-xs font-bold text-discord-light uppercase tracking-wide mb-2 block">Artifact Title</label>
+                                    <label for="upload-title" class="text-xs font-bold text-discord-light uppercase tracking-wide mb-2 flex items-center justify-between">
+                                        <span>Artifact Title</span>
+                                        <span id="title-counter" class="text-[10px] font-mono text-discord-light/50 normal-case">0/100</span>
+                                    </label>
                                     <div class="relative">
                                         <i class="fa-solid fa-tag absolute left-4 top-1/2 -translate-y-1/2 text-discord-light/50" aria-hidden="true"></i>
-                                        <input id="upload-title" type="text" class="w-full bg-discord-element border border-discord-divider rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder-discord-light/50 focus:border-discord-brand" placeholder="e.g. Project Phoenix Assets">
+                                        <input id="upload-title" type="text" maxlength="100" class="w-full bg-discord-element border border-discord-divider rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder-discord-light/50 focus:border-discord-brand" placeholder="e.g. Project Phoenix Assets">
                                     </div>
                                 </div>
                                 <div>
@@ -649,11 +775,36 @@
                         <input id="batch-search" type="text" placeholder="Filter batches..." class="w-full bg-transparent border-none rounded-xl py-3 pl-12 pr-4 text-white text-sm focus:ring-0 placeholder-discord-light/50" aria-label="Filter batches">
                         <span id="batch-count" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-xs text-discord-light font-mono" aria-live="polite"></span>
                     </div>
-                    <div class="flex gap-2 pr-2">
-                         <button id="batch-view-grid" class="w-9 h-9 rounded-lg bg-discord-element hover:bg-discord-hover text-discord-light flex items-center justify-center transition-colors" title="Grid View" aria-label="Switch to grid view">
+                    <div class="flex gap-2 pr-2 items-center">
+                         <div class="relative group">
+                            <button id="batch-sort-btn" class="w-11 h-11 rounded-lg bg-discord-element hover:bg-discord-hover text-discord-light hover:text-white flex items-center justify-center transition-colors border border-discord-divider" title="Sort options" aria-label="Sort batches">
+                                <i class="fa-solid fa-arrow-down-short-wide" aria-hidden="true"></i>
+                            </button>
+                            <div id="sort-menu" class="hidden absolute right-0 top-12 bg-discord-sidebar border border-discord-divider rounded-xl p-2 shadow-xl w-48 z-50">
+                                <button data-sort="date-desc" class="sort-option w-full text-left px-3 py-2 rounded-lg hover:bg-discord-hover text-discord-light hover:text-white transition-colors text-sm flex items-center justify-between">
+                                    <span>Date (Newest)</span><i class="fa-solid fa-arrow-down sort-indicator"></i>
+                                </button>
+                                <button data-sort="date-asc" class="sort-option w-full text-left px-3 py-2 rounded-lg hover:bg-discord-hover text-discord-light hover:text-white transition-colors text-sm flex items-center justify-between">
+                                    <span>Date (Oldest)</span><i class="fa-solid fa-arrow-up sort-indicator"></i>
+                                </button>
+                                <button data-sort="size-desc" class="sort-option w-full text-left px-3 py-2 rounded-lg hover:bg-discord-hover text-discord-light hover:text-white transition-colors text-sm flex items-center justify-between">
+                                    <span>Size (Largest)</span><i class="fa-solid fa-arrow-down sort-indicator"></i>
+                                </button>
+                                <button data-sort="size-asc" class="sort-option w-full text-left px-3 py-2 rounded-lg hover:bg-discord-hover text-discord-light hover:text-white transition-colors text-sm flex items-center justify-between">
+                                    <span>Size (Smallest)</span><i class="fa-solid fa-arrow-up sort-indicator"></i>
+                                </button>
+                                <button data-sort="name-asc" class="sort-option w-full text-left px-3 py-2 rounded-lg hover:bg-discord-hover text-discord-light hover:text-white transition-colors text-sm flex items-center justify-between">
+                                    <span>Name (A-Z)</span><i class="fa-solid fa-arrow-up sort-indicator"></i>
+                                </button>
+                                <button data-sort="name-desc" class="sort-option w-full text-left px-3 py-2 rounded-lg hover:bg-discord-hover text-discord-light hover:text-white transition-colors text-sm flex items-center justify-between">
+                                    <span>Name (Z-A)</span><i class="fa-solid fa-arrow-down sort-indicator"></i>
+                                </button>
+                            </div>
+                         </div>
+                         <button id="batch-view-grid" class="w-11 h-11 rounded-lg bg-discord-element hover:bg-discord-hover text-discord-light flex items-center justify-center transition-colors border border-discord-divider" title="Grid View" aria-label="Switch to grid view">
                             <i class="fa-solid fa-grip" aria-hidden="true"></i>
                          </button>
-                         <button id="batch-view-list" class="w-9 h-9 rounded-lg bg-discord-brand text-white flex items-center justify-center shadow-sm" title="List View" aria-label="Switch to list view" aria-pressed="true">
+                         <button id="batch-view-list" class="w-11 h-11 rounded-lg bg-discord-brand text-white flex items-center justify-center shadow-sm border border-discord-brand" title="List View" aria-label="Switch to list view" aria-pressed="true">
                             <i class="fa-solid fa-list" aria-hidden="true"></i>
                          </button>
                     </div>
@@ -763,6 +914,11 @@
                 </div>
             </section>
         </div>
+        
+        <!-- Scroll to top button -->
+        <button id="scroll-top-btn" class="fixed bottom-8 right-8 w-14 h-14 rounded-full bg-discord-brand hover:bg-discord-brandHover text-white shadow-2xl flex items-center justify-center z-40 transition-all hover:scale-110 active:scale-95" aria-label="Scroll to top" title="Scroll to top">
+            <i class="fa-solid fa-arrow-up text-xl" aria-hidden="true"></i>
+        </button>
     </main>
 
     <script>
@@ -957,15 +1113,50 @@
         uploadToggle.addEventListener('change', updateUploadMode);
         
         uploadInput.addEventListener('change', function() {
+            const fileSizeDisplay = document.getElementById('file-size-display');
+            const fileSizeText = document.getElementById('selected-filesize');
+            const fileErrorDisplay = document.getElementById('file-error-display');
+            const fileErrorMessage = document.getElementById('file-error-message');
+            const submitBtn = document.getElementById('submit-upload-btn');
+            
             if (this.files && this.files.length > 0) {
                 fileNameContainer.classList.remove('hidden');
+                
+                // Calculate total size
+                let totalSize = 0;
+                let hasLargeFile = false;
+                const maxSize = 25 * 1024 * 1024; // 25MB in bytes
+                
+                for (let i = 0; i < this.files.length; i++) {
+                    totalSize += this.files[i].size;
+                    if (this.files[i].size > maxSize) {
+                        hasLargeFile = true;
+                    }
+                }
+                
                 if (this.files.length === 1) {
                     fileNameDisplay.textContent = this.files[0].name;
                 } else {
                     fileNameDisplay.textContent = `${this.files.length} files selected`;
                 }
+                
+                // Show file size
+                fileSizeDisplay.classList.remove('hidden');
+                fileSizeText.textContent = formatBytes(totalSize);
+                
+                // Show warning if files are too large
+                if (hasLargeFile) {
+                    fileErrorDisplay.classList.remove('hidden');
+                    fileErrorMessage.textContent = 'Warning: Some files exceed 25MB recommended size';
+                    fileSizeText.classList.add('text-yellow-400');
+                } else {
+                    fileErrorDisplay.classList.add('hidden');
+                    fileSizeText.classList.remove('text-yellow-400');
+                }
             } else {
                 fileNameContainer.classList.add('hidden');
+                fileSizeDisplay.classList.add('hidden');
+                fileErrorDisplay.classList.add('hidden');
             }
         });
 
@@ -1300,14 +1491,14 @@
         let globalSearchTerm = '';
         let batchSearchTerm = '';
         let allBatches = [];
+        let currentSort = 'date-desc';
 
         const normalizeSearch = (value) => value.trim().toLowerCase();
 
         const getFilteredBatches = () => {
             const query = normalizeSearch(`${globalSearchTerm} ${batchSearchTerm}`);
-            if (!query) return allBatches;
-            const terms = query.split(/\s+/).filter(Boolean);
-            return allBatches.filter((batch) => {
+            let filtered = query ? allBatches.filter((batch) => {
+                const terms = query.split(/\s+/).filter(Boolean);
                 const haystack = [
                     batch.batch_id,
                     batch.original_name,
@@ -1317,7 +1508,35 @@
                     batch.description
                 ].join(' ').toLowerCase();
                 return terms.every((term) => haystack.includes(term));
-            });
+            }) : [...allBatches];
+            
+            // Apply sorting
+            return sortBatches(filtered);
+        };
+        
+        const sortBatches = (batches) => {
+            const sorted = [...batches];
+            switch(currentSort) {
+                case 'date-desc':
+                    sorted.sort((a, b) => new Date(b.upload_date) - new Date(a.upload_date));
+                    break;
+                case 'date-asc':
+                    sorted.sort((a, b) => new Date(a.upload_date) - new Date(b.upload_date));
+                    break;
+                case 'size-desc':
+                    sorted.sort((a, b) => (b.total_size || 0) - (a.total_size || 0));
+                    break;
+                case 'size-asc':
+                    sorted.sort((a, b) => (a.total_size || 0) - (b.total_size || 0));
+                    break;
+                case 'name-asc':
+                    sorted.sort((a, b) => (a.original_name || '').localeCompare(b.original_name || ''));
+                    break;
+                case 'name-desc':
+                    sorted.sort((a, b) => (b.original_name || '').localeCompare(a.original_name || ''));
+                    break;
+            }
+            return sorted;
         };
 
         const formatDate = (value) => {
@@ -1407,11 +1626,11 @@
             if (!gridBtn || !listBtn) return;
 
             if (view === 'grid') {
-                gridBtn.className = 'w-9 h-9 rounded-lg bg-discord-brand text-white flex items-center justify-center shadow-sm';
-                listBtn.className = 'w-9 h-9 rounded-lg bg-discord-element hover:bg-discord-hover text-discord-light flex items-center justify-center transition-colors';
+                gridBtn.className = 'w-11 h-11 rounded-lg bg-discord-brand text-white flex items-center justify-center shadow-sm border border-discord-brand';
+                listBtn.className = 'w-11 h-11 rounded-lg bg-discord-element hover:bg-discord-hover text-discord-light flex items-center justify-center transition-colors border border-discord-divider';
             } else {
-                listBtn.className = 'w-9 h-9 rounded-lg bg-discord-brand text-white flex items-center justify-center shadow-sm';
-                gridBtn.className = 'w-9 h-9 rounded-lg bg-discord-element hover:bg-discord-hover text-discord-light flex items-center justify-center transition-colors';
+                listBtn.className = 'w-11 h-11 rounded-lg bg-discord-brand text-white flex items-center justify-center shadow-sm border border-discord-brand';
+                gridBtn.className = 'w-11 h-11 rounded-lg bg-discord-element hover:bg-discord-hover text-discord-light flex items-center justify-center transition-colors border border-discord-divider';
             }
         };
 
@@ -1481,9 +1700,9 @@
                     <td class="px-6 py-4">${statusBadge}</td>
                     <td class="px-6 py-4 text-right">
                         <div class="flex items-center justify-end gap-2 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button class="w-8 h-8 rounded-full bg-discord-element hover:bg-discord-brand text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Download" aria-label="Download batch ${escapeHtml(batch.batch_id)}" data-action="download" data-id="${escapeHtml(batch.batch_id)}"><i class="fa-solid fa-download" aria-hidden="true"></i></button>
-                            <button class="w-8 h-8 rounded-full bg-discord-element hover:bg-green-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Verify" aria-label="Verify batch ${escapeHtml(batch.batch_id)}" data-action="verify" data-id="${escapeHtml(batch.batch_id)}"><i class="fa-solid fa-check" aria-hidden="true"></i></button>
-                            <button class="w-8 h-8 rounded-full bg-discord-element hover:bg-red-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Delete" aria-label="Delete batch ${escapeHtml(batch.batch_id)}" data-action="delete" data-id="${escapeHtml(batch.batch_id)}"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
+                            <button class="w-11 h-11 rounded-full bg-discord-element hover:bg-discord-brand text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center border border-discord-divider hover:border-discord-brand" title="Download" aria-label="Download batch ${escapeHtml(batch.batch_id)}" data-action="download" data-id="${escapeHtml(batch.batch_id)}"><i class="fa-solid fa-download" aria-hidden="true"></i></button>
+                            <button class="w-11 h-11 rounded-full bg-discord-element hover:bg-green-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center border border-discord-divider hover:border-green-500" title="Verify" aria-label="Verify batch ${escapeHtml(batch.batch_id)}" data-action="verify" data-id="${escapeHtml(batch.batch_id)}"><i class="fa-solid fa-check" aria-hidden="true"></i></button>
+                            <button class="w-11 h-11 rounded-full bg-discord-element hover:bg-red-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center border border-discord-divider hover:border-red-500" title="Delete" aria-label="Delete batch ${escapeHtml(batch.batch_id)}" data-action="delete" data-id="${escapeHtml(batch.batch_id)}"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
                         </div>
                     </td>
                 `;
@@ -1576,9 +1795,9 @@
                         </div>
                     </div>
                     <div class="flex items-center justify-end gap-2 pt-2 border-t border-discord-divider/60">
-                        <button class="w-8 h-8 rounded-full bg-discord-bg/70 hover:bg-discord-brand text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Download" data-action="download" data-id="${batch.batch_id}"><i class="fa-solid fa-download"></i></button>
-                        <button class="w-8 h-8 rounded-full bg-discord-bg/70 hover:bg-green-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Verify" data-action="verify" data-id="${batch.batch_id}"><i class="fa-solid fa-check"></i></button>
-                        <button class="w-8 h-8 rounded-full bg-discord-bg/70 hover:bg-red-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center" title="Delete" data-action="delete" data-id="${batch.batch_id}"><i class="fa-solid fa-trash"></i></button>
+                        <button class="w-11 h-11 rounded-full bg-discord-bg/70 hover:bg-discord-brand text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center border border-discord-divider hover:border-discord-brand" title="Download" aria-label="Download batch ${batch.batch_id}" data-action="download" data-id="${batch.batch_id}"><i class="fa-solid fa-download" aria-hidden="true"></i></button>
+                        <button class="w-11 h-11 rounded-full bg-discord-bg/70 hover:bg-green-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center border border-discord-divider hover:border-green-500" title="Verify" aria-label="Verify batch ${batch.batch_id}" data-action="verify" data-id="${batch.batch_id}"><i class="fa-solid fa-check" aria-hidden="true"></i></button>
+                        <button class="w-11 h-11 rounded-full bg-discord-bg/70 hover:bg-red-500 text-discord-light hover:text-white transition-all shadow-sm flex items-center justify-center border border-discord-divider hover:border-red-500" title="Delete" aria-label="Delete batch ${batch.batch_id}" data-action="delete" data-id="${batch.batch_id}"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -1662,6 +1881,21 @@
                 if (savedView === 'grid' || savedView === 'list') {
                     batchView = savedView;
                 }
+                
+                const savedSort = localStorage.getItem('disbucket_sort');
+                if (savedSort) {
+                    currentSort = savedSort;
+                    // Update active sort option in menu
+                    const sortMenu = document.getElementById('sort-menu');
+                    if (sortMenu) {
+                        sortMenu.querySelectorAll('.sort-option').forEach(opt => {
+                            if (opt.dataset.sort === savedSort) {
+                                opt.classList.add('bg-discord-hover', 'text-white');
+                                opt.classList.remove('text-discord-light');
+                            }
+                        });
+                    }
+                }
             } catch (e) {
                 console.log('LocalStorage not available');
             }
@@ -1711,6 +1945,56 @@
         document.getElementById('batch-view-list').addEventListener('click', () => {
             setBatchView('list');
         });
+        
+        // Sort menu functionality
+        const sortBtn = document.getElementById('batch-sort-btn');
+        const sortMenu = document.getElementById('sort-menu');
+        let sortMenuOpen = false;
+        
+        if (sortBtn && sortMenu) {
+            sortBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sortMenuOpen = !sortMenuOpen;
+                sortMenu.classList.toggle('hidden', !sortMenuOpen);
+            });
+            
+            // Close sort menu when clicking outside
+            document.addEventListener('click', () => {
+                if (sortMenuOpen) {
+                    sortMenuOpen = false;
+                    sortMenu.classList.add('hidden');
+                }
+            });
+            
+            // Handle sort option selection
+            sortMenu.querySelectorAll('.sort-option').forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const sortType = option.dataset.sort;
+                    currentSort = sortType;
+                    
+                    // Update active state
+                    sortMenu.querySelectorAll('.sort-option').forEach(opt => {
+                        opt.classList.remove('bg-discord-hover', 'text-white');
+                        opt.classList.add('text-discord-light');
+                    });
+                    option.classList.add('bg-discord-hover', 'text-white');
+                    option.classList.remove('text-discord-light');
+                    
+                    // Save preference
+                    try {
+                        localStorage.setItem('disbucket_sort', sortType);
+                    } catch (e) {
+                        console.log('LocalStorage not available');
+                    }
+                    
+                    renderBatches();
+                    sortMenuOpen = false;
+                    sortMenu.classList.add('hidden');
+                    showToast(`Sorted by ${option.textContent.trim()}`, 'info');
+                });
+            });
+        }
 
         document.getElementById('refresh-btn').addEventListener('click', async () => {
             const btn = document.getElementById('refresh-btn');
@@ -1737,7 +2021,74 @@
             if (!sample.includes('/')) return '';
             return sample.split('/')[0];
         };
+        
+        // Form validation helper
+        const validateInput = (input, isValid, errorMessage = '') => {
+            const parent = input.parentElement;
+            const existingError = parent.querySelector('.error-message');
+            
+            if (!isValid) {
+                input.classList.add('input-error');
+                input.classList.remove('input-success');
+                if (!existingError && errorMessage) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error-message';
+                    errorDiv.innerHTML = `<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span>${escapeHtml(errorMessage)}</span>`;
+                    parent.appendChild(errorDiv);
+                }
+            } else {
+                input.classList.remove('input-error');
+                input.classList.add('input-success');
+                if (existingError) {
+                    existingError.remove();
+                }
+                // Remove success class after 2 seconds
+                setTimeout(() => {
+                    input.classList.remove('input-success');
+                }, 2000);
+            }
+            return isValid;
+        };
 
+        // Add live validation for title
+        const titleInput = document.getElementById('upload-title');
+        const titleCounter = document.getElementById('title-counter');
+        
+        if (titleInput) {
+            // Update character counter
+            titleInput.addEventListener('input', () => {
+                const length = titleInput.value.length;
+                if (titleCounter) {
+                    titleCounter.textContent = `${length}/100`;
+                    if (length > 90) {
+                        titleCounter.classList.add('text-yellow-400');
+                        titleCounter.classList.remove('text-discord-light/50');
+                    } else {
+                        titleCounter.classList.remove('text-yellow-400');
+                        titleCounter.classList.add('text-discord-light/50');
+                    }
+                }
+                
+                const parent = titleInput.parentElement;
+                const existingError = parent?.parentElement?.querySelector('.error-message');
+                if (existingError) {
+                    existingError.remove();
+                    titleInput.classList.remove('input-error');
+                }
+            });
+            
+            titleInput.addEventListener('blur', () => {
+                const value = titleInput.value.trim();
+                if (value && value.length < 3) {
+                    validateInput(titleInput, false, 'Title must be at least 3 characters');
+                } else if (value && value.length > 100) {
+                    validateInput(titleInput, false, 'Title must be less than 100 characters');
+                } else if (value) {
+                    validateInput(titleInput, true);
+                }
+            });
+        }
+        
         document.getElementById('upload-form').addEventListener('submit', async (event) => {
             event.preventDefault();
             const fileInput = document.getElementById('upload-file');
@@ -1746,9 +2097,22 @@
             const submitIcon = submitBtn.querySelector('i');
             const submitText = submitBtn.querySelector('span');
             
+            // Validate file selection
             if (!fileInput.files.length) {
                 showToast('Please select a file or folder to upload', 'warning');
+                fileInput.focus();
                 return;
+            }
+            
+            // Validate title if provided
+            const titleValue = titleInput.value.trim();
+            if (titleValue && (titleValue.length < 3 || titleValue.length > 100)) {
+                const isValid = titleValue.length >= 3 && titleValue.length <= 100;
+                validateInput(titleInput, isValid, isValid ? '' : 'Title must be between 3-100 characters');
+                if (!isValid) {
+                    titleInput.focus();
+                    return;
+                }
             }
             
             // Add loading state
@@ -1821,6 +2185,10 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ batch_id: batchId })
                     });
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({}));
+                        throw new Error(errorData.detail || `Download failed: ${res.status}`);
+                    }
                     const data = await res.json();
                     showToast('Download job started', 'info');
                     startJob(data.job_id);
@@ -1831,6 +2199,10 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ batch_id: batchId })
                     });
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({}));
+                        throw new Error(errorData.detail || `Verification failed: ${res.status}`);
+                    }
                     const data = await res.json();
                     showToast('Verification job started', 'info');
                     startJob(data.job_id);
@@ -1844,13 +2216,18 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ batch_id: batchId, delete_remote: deleteRemote })
                     });
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({}));
+                        throw new Error(errorData.detail || `Delete failed: ${res.status}`);
+                    }
                     const data = await res.json();
                     showToast('Delete job started', 'info');
                     startJob(data.job_id);
                 }
             } catch(e) { 
                 console.error("Action failed", e);
-                showToast('Action failed to start', 'error');
+                const userMessage = e.message || 'Action failed to start. Please try again.';
+                showToast(userMessage, 'error');
             }
         };
 
@@ -1895,15 +2272,37 @@
             const btn = document.getElementById(id);
             if (btn) {
                 btn.addEventListener('click', async () => {
+                    const originalText = btn.textContent;
+                    const originalHTML = btn.innerHTML;
+                    
                     try {
+                        // Add loading state
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2" aria-hidden="true"></i>Processing...';
+                        
                         const res = await fetch(endpoint, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(body)
                         });
+                        
+                        if (!res.ok) {
+                            throw new Error(`Request failed: ${res.status}`);
+                        }
+                        
                         const data = await res.json();
                         startJob(data.job_id);
-                    } catch(e) { console.error("System action failed"); }
+                        showToast('Job started successfully', 'success');
+                    } catch(e) { 
+                        console.error("System action failed", e);
+                        showToast('Failed to start job. Please try again.', 'error');
+                    } finally {
+                        // Reset button state
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            btn.innerHTML = originalHTML;
+                        }, 1000);
+                    }
                 });
             }
         };
@@ -1912,6 +2311,36 @@
         bindAction('sync-reset-btn', '/api/jobs/sync', { reset: true });
         bindAction('backup-btn', '/api/jobs/backup', { upload_to_discord: false });
         bindAction('backup-upload-btn', '/api/jobs/backup', { upload_to_discord: true });
+        
+        // Copy logs functionality
+        const copyLogsBtn = document.getElementById('copy-logs-btn');
+        if (copyLogsBtn) {
+            copyLogsBtn.addEventListener('click', async () => {
+                const jobLogs = document.getElementById('job-logs');
+                if (!jobLogs) return;
+                
+                // Extract text content from logs
+                const logsText = jobLogs.innerText || jobLogs.textContent;
+                
+                try {
+                    await navigator.clipboard.writeText(logsText);
+                    showToast('Logs copied to clipboard', 'success');
+                    
+                    // Visual feedback
+                    const icon = copyLogsBtn.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fa-copy');
+                        icon.classList.add('fa-check');
+                        setTimeout(() => {
+                            icon.classList.remove('fa-check');
+                            icon.classList.add('fa-copy');
+                        }, 2000);
+                    }
+                } catch (e) {
+                    showToast('Failed to copy logs', 'error');
+                }
+            });
+        }
 
         updateUploadMode();
         
@@ -1922,6 +2351,60 @@
         notificationContainer.setAttribute('aria-live', 'polite');
         notificationContainer.setAttribute('aria-atomic', 'true');
         document.body.appendChild(notificationContainer);
+        
+        // Connection monitoring
+        let isOnline = true;
+        const connectionStatus = document.getElementById('connection-status');
+        
+        const checkConnection = async () => {
+            try {
+                const response = await fetch('/api/stats', { method: 'HEAD', cache: 'no-cache' });
+                if (response.ok && !isOnline) {
+                    isOnline = true;
+                    if (connectionStatus) {
+                        connectionStatus.textContent = 'Connected';
+                        connectionStatus.className = 'text-green-400';
+                    }
+                    showToast('Connection restored', 'success');
+                }
+            } catch (e) {
+                if (isOnline) {
+                    isOnline = false;
+                    if (connectionStatus) {
+                        connectionStatus.textContent = 'Disconnected';
+                        connectionStatus.className = 'text-red-400';
+                    }
+                    showToast('Connection lost. Retrying...', 'error');
+                }
+            }
+        };
+        
+        // Check connection every 30 seconds
+        setInterval(checkConnection, 30000);
+        
+        // Also check on window focus
+        window.addEventListener('focus', checkConnection);
+        
+        // Scroll to top button
+        const scrollTopBtn = document.getElementById('scroll-top-btn');
+        const mainContainer = document.getElementById('main-container');
+        
+        if (scrollTopBtn && mainContainer) {
+            mainContainer.addEventListener('scroll', () => {
+                if (mainContainer.scrollTop > 300) {
+                    scrollTopBtn.classList.add('visible');
+                } else {
+                    scrollTopBtn.classList.remove('visible');
+                }
+            });
+            
+            scrollTopBtn.addEventListener('click', () => {
+                mainContainer.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+        }
     </script>
 </body>
 </html>
