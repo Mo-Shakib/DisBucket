@@ -293,6 +293,7 @@ async def api_upload(
     tags: str = Form(""),
     description: str = Form(""),
     confirm: bool = Form(False),
+    root_name: str = Form(""),
 ) -> Dict[str, str]:
     job = _create_job("upload")
     meta = {"title": title, "tags": tags, "description": description}
@@ -303,8 +304,11 @@ async def api_upload(
 
     try:
         await _log(job.id, "Receiving upload...")
+        normalized_root = root_name.strip().strip("/").replace("\\", "/")
         for upload_file in files:
             relative_name = upload_file.filename.replace("\\", "/")
+            if normalized_root and not relative_name.startswith(f"{normalized_root}/"):
+                relative_name = f"{normalized_root}/{relative_name}"
             top_level_names.append(relative_name.split("/", 1)[0])
             target_path = upload_root / relative_name
             target_path.parent.mkdir(parents=True, exist_ok=True)

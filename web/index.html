@@ -327,35 +327,57 @@
                     <div class="px-6 py-4 border-b border-discord-divider flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="w-9 h-9 rounded-xl bg-discord-element flex items-center justify-center text-discord-brand">
-                                <i class="fa-solid fa-clipboard-list"></i>
+                                <i class="fa-solid fa-chart-line"></i>
                             </div>
                             <div>
-                                <h3 class="text-base font-bold text-white">Changelog</h3>
-                                <p class="text-xs text-discord-light">Latest updates and improvements</p>
+                                <h3 class="text-base font-bold text-white">Activity & Insights</h3>
+                                <p class="text-xs text-discord-light">Last 7 days of storage activity</p>
                             </div>
                         </div>
-                        <span class="text-xs font-mono text-discord-brand bg-discord-brand/10 px-3 py-1 rounded-full border border-discord-brand/20">v4.0.0</span>
+                        <span class="text-xs font-mono text-discord-brand bg-discord-brand/10 px-3 py-1 rounded-full border border-discord-brand/20">Live</span>
                     </div>
-                    <div class="px-6 py-5 space-y-4 text-sm text-discord-light">
-                        <div class="flex items-start gap-3">
-                            <div class="w-2 h-2 rounded-full bg-discord-brand mt-2"></div>
-                            <div>
-                                <div class="font-semibold text-white">Web UI launch</div>
-                                <div>Discord-style dashboard with live job runner and status logs.</div>
+                    <div class="px-6 py-5 space-y-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-discord-element/40 border border-discord-divider/60 rounded-2xl p-5">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div>
+                                        <div class="text-xs text-discord-light uppercase tracking-wider font-bold">Upload Volume</div>
+                                        <div id="upload-volume-total" class="text-lg font-bold text-white mt-1">-- files</div>
+                                    </div>
+                                    <span id="upload-volume-trend" class="text-xs font-mono text-discord-light bg-discord-bg/60 border border-discord-divider/60 px-2 py-1 rounded-full">--</span>
+                                </div>
+                                <div id="upload-volume-bars" class="flex items-end gap-2 h-28"></div>
+                                <div id="upload-volume-labels" class="flex justify-between text-[10px] text-discord-light mt-3 font-mono"></div>
+                            </div>
+                            <div class="bg-discord-element/40 border border-discord-divider/60 rounded-2xl p-5">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div>
+                                        <div class="text-xs text-discord-light uppercase tracking-wider font-bold">Storage Growth</div>
+                                        <div id="storage-growth-total" class="text-lg font-bold text-white mt-1">--</div>
+                                    </div>
+                                    <span id="storage-growth-trend" class="text-xs font-mono text-discord-light bg-discord-bg/60 border border-discord-divider/60 px-2 py-1 rounded-full">--</span>
+                                </div>
+                                <div class="h-28 bg-discord-bg/60 rounded-xl border border-discord-divider/60 p-3">
+                                    <svg viewBox="0 0 200 60" class="w-full h-full">
+                                        <defs>
+                                            <linearGradient id="growthLine" x1="0" y1="0" x2="1" y2="0">
+                                                <stop offset="0%" stop-color="#5865F2" />
+                                                <stop offset="100%" stop-color="#8b5cf6" />
+                                            </linearGradient>
+                                        </defs>
+                                        <path id="storage-growth-line" d="M5 50 L35 42 L65 38 L95 30 L125 24 L155 18 L195 12" fill="none" stroke="url(#growthLine)" stroke-width="3" stroke-linecap="round" />
+                                        <path id="storage-growth-area" d="M5 50 L35 42 L65 38 L95 30 L125 24 L155 18 L195 12 L195 60 L5 60 Z" fill="url(#growthLine)" opacity="0.15" />
+                                    </svg>
+                                </div>
+                                <div id="storage-growth-labels" class="flex justify-between text-[10px] text-discord-light mt-3 font-mono"></div>
                             </div>
                         </div>
-                        <div class="flex items-start gap-3">
-                            <div class="w-2 h-2 rounded-full bg-green-400 mt-2"></div>
-                            <div>
-                                <div class="font-semibold text-white">Batch browsing upgrades</div>
-                                <div>Searchable batch table with hover actions and richer metadata cards.</div>
+                        <div class="bg-discord-element/40 border border-discord-divider/60 rounded-2xl p-5">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="text-xs text-discord-light uppercase tracking-wider font-bold">Recent Activity</div>
+                                <span id="activity-updated" class="text-[10px] text-discord-light font-mono">Updated just now</span>
                             </div>
-                        </div>
-                        <div class="flex items-start gap-3">
-                            <div class="w-2 h-2 rounded-full bg-blue-400 mt-2"></div>
-                            <div>
-                                <div class="font-semibold text-white">Maintenance actions</div>
-                                <div>One-click sync, backup, and reset flows from the Actions view.</div>
+                            <div id="activity-feed" class="space-y-3 text-sm text-discord-light">
                             </div>
                         </div>
                     </div>
@@ -744,7 +766,10 @@
                 const haystack = [
                     batch.batch_id,
                     batch.original_name,
-                    batch.status
+                    batch.status,
+                    batch.title,
+                    batch.tags,
+                    batch.description
                 ].join(' ').toLowerCase();
                 return terms.every((term) => haystack.includes(term));
             });
@@ -760,6 +785,205 @@
                 day: '2-digit',
                 year: 'numeric',
                 timeZone,
+            });
+        };
+
+        const escapeHtml = (value) => {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+
+        const renderActivity = () => {
+            const feed = document.getElementById('activity-feed');
+            const updated = document.getElementById('activity-updated');
+            if (!feed || !updated) return;
+
+            feed.innerHTML = '';
+            const items = Array.isArray(allBatches) ? allBatches.slice(0, 3) : [];
+
+            if (!items.length) {
+                updated.textContent = 'No activity yet';
+                feed.innerHTML = `
+                    <div class="text-xs text-discord-light">Upload a batch to see activity.</div>
+                `;
+                return;
+            }
+
+            const statusMap = {
+                complete: {
+                    dot: 'bg-green-400',
+                    title: 'Uploaded batch',
+                },
+                uploading: {
+                    dot: 'bg-discord-brand',
+                    title: 'Uploading batch',
+                },
+                failed: {
+                    dot: 'bg-red-400',
+                    title: 'Upload failed',
+                },
+            };
+
+            items.forEach((batch) => {
+                const statusInfo = statusMap[batch.status] || {
+                    dot: 'bg-yellow-400',
+                    title: 'Batch update',
+                };
+                const name = escapeHtml(batch.original_name || `Batch ${batch.batch_id}`);
+                const fileCount = batch.file_count ? `${batch.file_count} files` : 'Files count unavailable';
+                const when = formatDate(batch.upload_date);
+                const shortId = escapeHtml(batch.batch_id ? batch.batch_id.slice(0, 6) : '');
+
+                const item = document.createElement('div');
+                item.className = 'flex items-start gap-3';
+                item.innerHTML = `
+                    <div class="w-2 h-2 rounded-full ${statusInfo.dot} mt-2"></div>
+                    <div>
+                        <div class="font-semibold text-white">${statusInfo.title}</div>
+                        <div>${name} • ${fileCount} • ${when}${shortId ? ` • #${shortId}` : ''}</div>
+                    </div>
+                `;
+                feed.appendChild(item);
+            });
+
+            updated.textContent = `Updated ${formatDate(items[0].upload_date)}`;
+        };
+
+        const toDayKey = (date) => {
+            const local = new Date(date);
+            if (Number.isNaN(local.getTime())) return null;
+            return local.toLocaleDateString('en-CA');
+        };
+
+        const getLastNDays = (count) => {
+            const days = [];
+            const now = new Date();
+            for (let i = count - 1; i >= 0; i -= 1) {
+                const day = new Date(now);
+                day.setDate(now.getDate() - i);
+                days.push(day);
+            }
+            return days;
+        };
+
+        const renderInsights = () => {
+            const volumeTotal = document.getElementById('upload-volume-total');
+            const volumeTrend = document.getElementById('upload-volume-trend');
+            const volumeBars = document.getElementById('upload-volume-bars');
+            const volumeLabels = document.getElementById('upload-volume-labels');
+            const growthTotal = document.getElementById('storage-growth-total');
+            const growthTrend = document.getElementById('storage-growth-trend');
+            const growthLine = document.getElementById('storage-growth-line');
+            const growthArea = document.getElementById('storage-growth-area');
+            const growthLabels = document.getElementById('storage-growth-labels');
+
+            if (!volumeTotal || !volumeTrend || !volumeBars || !volumeLabels
+                || !growthTotal || !growthTrend || !growthLine || !growthArea || !growthLabels) {
+                return;
+            }
+
+            const days = getLastNDays(7);
+            const dayKeys = days.map((day) => toDayKey(day));
+            const byDay = dayKeys.reduce((acc, key) => {
+                acc[key] = { files: 0, size: 0 };
+                return acc;
+            }, {});
+
+            (allBatches || []).forEach((batch) => {
+                const key = toDayKey(batch.upload_date);
+                if (!key || !(key in byDay)) return;
+                byDay[key].files += Number(batch.file_count || 0);
+                byDay[key].size += Number(batch.total_size || 0);
+            });
+
+            const dailyFiles = dayKeys.map((key) => byDay[key].files);
+            const dailySize = dayKeys.map((key) => byDay[key].size);
+            const totalFiles = dailyFiles.reduce((sum, val) => sum + val, 0);
+            const totalSize = dailySize.reduce((sum, val) => sum + val, 0);
+
+            volumeTotal.textContent = `${totalFiles} files`;
+            growthTotal.textContent = `+${formatBytes(totalSize)}`;
+
+            const prevDays = getLastNDays(14).slice(0, 7).map((day) => toDayKey(day));
+            const prevFiles = (allBatches || []).reduce((sum, batch) => {
+                const key = toDayKey(batch.upload_date);
+                if (!key || !prevDays.includes(key)) return sum;
+                return sum + Number(batch.file_count || 0);
+            }, 0);
+            const prevSize = (allBatches || []).reduce((sum, batch) => {
+                const key = toDayKey(batch.upload_date);
+                if (!key || !prevDays.includes(key)) return sum;
+                return sum + Number(batch.total_size || 0);
+            }, 0);
+
+            const formatTrend = (current, previous, positiveClass, negativeClass) => {
+                if (!previous) return { text: 'No prior data', className: 'text-discord-light bg-discord-bg/60 border border-discord-divider/60' };
+                const delta = ((current - previous) / previous) * 100;
+                const sign = delta >= 0 ? '+' : '';
+                return {
+                    text: `${sign}${delta.toFixed(0)}%`,
+                    className: delta >= 0 ? positiveClass : negativeClass,
+                };
+            };
+
+            const volumeTrendInfo = formatTrend(
+                totalFiles,
+                prevFiles,
+                'text-green-400 bg-green-500/10 border border-green-500/20',
+                'text-red-400 bg-red-500/10 border border-red-500/20',
+            );
+            volumeTrend.textContent = volumeTrendInfo.text;
+            volumeTrend.className = `text-xs font-mono px-2 py-1 rounded-full ${volumeTrendInfo.className}`;
+
+            const growthTrendInfo = formatTrend(
+                totalSize,
+                prevSize,
+                'text-green-400 bg-green-500/10 border border-green-500/20',
+                'text-red-400 bg-red-500/10 border border-red-500/20',
+            );
+            growthTrend.textContent = growthTrendInfo.text;
+            growthTrend.className = `text-xs font-mono px-2 py-1 rounded-full ${growthTrendInfo.className}`;
+
+            const maxFiles = Math.max(1, ...dailyFiles);
+            volumeBars.innerHTML = '';
+            dailyFiles.forEach((count, index) => {
+                const height = Math.max(10, Math.round((count / maxFiles) * 96));
+                const bar = document.createElement('div');
+                const tint = index >= 4 ? 'bg-purple-500/60' : 'bg-discord-brand/60';
+                bar.className = `w-6 rounded-lg ${tint}`;
+                bar.style.height = `${height}px`;
+                bar.title = `${count} files`;
+                volumeBars.appendChild(bar);
+            });
+
+            volumeLabels.innerHTML = '';
+            days.forEach((day) => {
+                const label = document.createElement('span');
+                label.textContent = day.toLocaleDateString(undefined, { weekday: 'short' });
+                volumeLabels.appendChild(label);
+            });
+
+            const maxSize = Math.max(1, ...dailySize);
+            const points = dailySize.map((value, index) => {
+                const x = 5 + (index * (190 / 6));
+                const y = 50 - (value / maxSize) * 38;
+                return `${x.toFixed(1)} ${y.toFixed(1)}`;
+            });
+            const linePath = `M${points[0]} ` + points.slice(1).map((point) => `L${point}`).join(' ');
+            growthLine.setAttribute('d', linePath);
+            growthArea.setAttribute('d', `${linePath} L195 60 L5 60 Z`);
+
+            growthLabels.innerHTML = '';
+            const labelValues = [0, maxSize * 0.33, maxSize * 0.66, maxSize];
+            labelValues.forEach((value) => {
+                const label = document.createElement('span');
+                label.textContent = formatBytes(Math.round(value));
+                growthLabels.appendChild(label);
             });
         };
 
@@ -779,7 +1003,8 @@
 
             batchesToRender.forEach((batch) => {
                 const row = document.createElement('tr');
-                row.className = 'group hover:bg-discord-hover/50 transition-colors';
+                row.className = 'group hover:bg-discord-hover/50 transition-colors cursor-pointer';
+                row.dataset.batchId = batch.batch_id;
 
                 let statusBadge = `<span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase bg-discord-bg text-discord-light border border-discord-divider">${batch.status}</span>`;
                 if (batch.status === 'complete') {
@@ -807,7 +1032,32 @@
                         </div>
                     </td>
                 `;
+                const detailsRow = document.createElement('tr');
+                detailsRow.className = 'hidden bg-discord-bg/40';
+                detailsRow.dataset.batchDetails = batch.batch_id;
+                const title = escapeHtml(batch.title || '—');
+                const tags = escapeHtml(batch.tags || '—');
+                const description = escapeHtml(batch.description || '—');
+                detailsRow.innerHTML = `
+                    <td colspan="6" class="px-6 py-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 text-sm">
+                            <div class="bg-discord-element/40 border border-discord-divider/60 rounded-xl p-4">
+                                <div class="text-xs text-discord-light uppercase tracking-wider font-bold mb-2">Title</div>
+                                <div class="text-white font-semibold break-words">${title}</div>
+                            </div>
+                            <div class="bg-discord-element/40 border border-discord-divider/60 rounded-xl p-4">
+                                <div class="text-xs text-discord-light uppercase tracking-wider font-bold mb-2">Tags</div>
+                                <div class="text-discord-light break-words">${tags}</div>
+                            </div>
+                            <div class="bg-discord-element/40 border border-discord-divider/60 rounded-xl p-4">
+                                <div class="text-xs text-discord-light uppercase tracking-wider font-bold mb-2">Description</div>
+                                <div class="text-discord-light break-words">${description}</div>
+                            </div>
+                        </div>
+                    </td>
+                `;
                 table.appendChild(row);
+                table.appendChild(detailsRow);
             });
         };
 
@@ -817,6 +1067,8 @@
                 const batches = await res.json();
                 allBatches = Array.isArray(batches) ? batches : [];
                 renderBatches();
+                renderActivity();
+                renderInsights();
             } catch (e) { console.log("Batches load error"); }
         };
 
@@ -865,9 +1117,17 @@
             setTimeout(() => icon.classList.remove('fa-spin'), 500);
         });
 
+        const getFolderRootName = (files) => {
+            if (!files || files.length === 0) return '';
+            const sample = files[0].webkitRelativePath || '';
+            if (!sample.includes('/')) return '';
+            return sample.split('/')[0];
+        };
+
         document.getElementById('upload-form').addEventListener('submit', async (event) => {
             event.preventDefault();
             const fileInput = document.getElementById('upload-file');
+            const titleInput = document.getElementById('upload-title');
             if (!fileInput.files.length) {
                 alert('Please select a file or folder to upload.');
                 return;
@@ -876,6 +1136,14 @@
             Array.from(fileInput.files).forEach((file) => {
                 formData.append('files', file);
             });
+            if (uploadToggle.checked) {
+                const rootName = getFolderRootName(fileInput.files)
+                    || titleInput.value.trim()
+                    || window.prompt('Folder name to preserve', '');
+                if (rootName) {
+                    formData.append('root_name', rootName.trim());
+                }
+            }
             formData.append('title', document.getElementById('upload-title').value);
             formData.append('tags', document.getElementById('upload-tags').value);
             formData.append('description', document.getElementById('upload-description').value);
@@ -888,46 +1156,58 @@
             } catch(e) { alert("Upload failed to start."); }
         });
 
+        const toggleBatchDetails = (batchId) => {
+            const detailsRow = document.querySelector(`tr[data-batch-details="${batchId}"]`);
+            if (!detailsRow) return;
+            detailsRow.classList.toggle('hidden');
+        };
+
         document.getElementById('batch-table').addEventListener('click', async (event) => {
             const button = event.target.closest('button');
-            if (!button) return;
-            const action = button.dataset.action;
-            const batchId = button.dataset.id;
-            
-            if (!action) return;
+            if (button) {
+                const action = button.dataset.action;
+                const batchId = button.dataset.id;
 
-            try {
-                if (action === 'download') {
-                    const res = await fetch('/api/jobs/download', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ batch_id: batchId })
-                    });
-                    const data = await res.json();
-                    startJob(data.job_id);
-                }
-                else if (action === 'verify') {
-                    const res = await fetch('/api/jobs/verify', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ batch_id: batchId })
-                    });
-                    const data = await res.json();
-                    startJob(data.job_id);
-                }
-                else if (action === 'delete') {
-                    if (!confirm('Are you sure you want to delete this batch locally?')) return;
-                    const deleteRemote = confirm('Should we also delete the remote Discord thread?');
-                    
-                    const res = await fetch('/api/jobs/delete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ batch_id: batchId, delete_remote: deleteRemote })
-                    });
-                    const data = await res.json();
-                    startJob(data.job_id);
-                }
-            } catch(e) { console.error("Action failed", e); }
+                if (!action) return;
+
+                try {
+                    if (action === 'download') {
+                        const res = await fetch('/api/jobs/download', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ batch_id: batchId })
+                        });
+                        const data = await res.json();
+                        startJob(data.job_id);
+                    }
+                    else if (action === 'verify') {
+                        const res = await fetch('/api/jobs/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ batch_id: batchId })
+                        });
+                        const data = await res.json();
+                        startJob(data.job_id);
+                    }
+                    else if (action === 'delete') {
+                        if (!confirm('Are you sure you want to delete this batch locally?')) return;
+                        const deleteRemote = confirm('Should we also delete the remote Discord thread?');
+                        
+                        const res = await fetch('/api/jobs/delete', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ batch_id: batchId, delete_remote: deleteRemote })
+                        });
+                        const data = await res.json();
+                        startJob(data.job_id);
+                    }
+                } catch(e) { console.error("Action failed", e); }
+                return;
+            }
+
+            const row = event.target.closest('tr');
+            if (!row || !row.dataset.batchId) return;
+            toggleBatchDetails(row.dataset.batchId);
         });
 
         const bindAction = (id, endpoint, body) => {
